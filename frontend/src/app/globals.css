@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-claude-primary: #cc785c;
+  --color-claude-primary-active: #a9583e;
+  --color-claude-primary-disabled: #e6dfd8;
+  --color-claude-ink: #141413;
+  --color-claude-body: #3d3d3a;
+  --color-claude-body-strong: #252523;
+  --color-claude-muted: #6c6a64;
+  --color-claude-muted-soft: #8e8b82;
+  --color-claude-hairline: #e6dfd8;
+  --color-claude-hairline-soft: #ebe6df;
+  --color-claude-canvas: #faf9f5;
+  --color-claude-surface-soft: #f5f0e8;
+  --color-claude-surface-card: #efe9de;
+  --color-claude-surface-cream-strong: #e8e0d2;
+  --color-claude-surface-dark: #181715;
+  --color-claude-surface-dark-elevated: #252320;
+  --color-claude-surface-dark-soft: #1f1e1b;
+  --color-claude-on-primary: #ffffff;
+  --color-claude-on-dark: #faf9f5;
+  --color-claude-on-dark-soft: #a09d96;
+  --color-claude-accent-teal: #5db8a6;
+  --color-claude-accent-amber: #e8a55a;
+  --color-claude-success: #5db872;
+  --color-claude-warning: #d4a017;
+  --color-claude-error: #c64545;
+
+  --font-display: "Cormorant Garamond", "EB Garamond", "Garamond", "Times New Roman", serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  --primary: #cc785c;
+  --primary-active: #a9583e;
+  --primary-disabled: #e6dfd8;
+  --primary-foreground: #ffffff;
+  --secondary: #efe9de;
+  --secondary-foreground: #141413;
+  --background: #faf9f5;
+  --foreground: #141413;
+  --body: #3d3d3a;
+  --body-strong: #252523;
+  --muted: #6c6a64;
+  --muted-foreground: #8e8b82;
+  --card: #efe9de;
+  --card-foreground: #141413;
+  --border: #e6dfd8;
+  --border-soft: #ebe6df;
+  --ring: #cc785c;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 9999px;
+  --surface-dark: #181715;
+  --surface-dark-elevated: #252320;
+  --surface-dark-soft: #1f1e1b;
+  --on-dark: #faf9f5;
+  --on-dark-soft: #a09d96;
+  --accent: #5db8a6;
+  --accent-secondary: #e8a55a;
+  --accent-foreground: #ffffff;
+  --success: #5db872;
+  --warning: #d4a017;
+  --error: #c64545;
+}
+
+body {
+  background-color: #faf9f5;
+  color: #141413;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

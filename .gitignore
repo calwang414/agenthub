@@ -1,0 +1,46 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Runtime data
+data.db
+uploads/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Python (global catch-all, subdirectories have their own)
+__pycache__/
+*.py[cod]
+*.pyo
+
+# AI(local only)
+.opencode/
+.trae/
+AGENTS.md
+.superpowers/
+# Logs
+*.log
+.logs/
+
+# Dev server runtime
+.pids/
+
+# Worktrees
+.worktrees/

@@ -1,21 +1,23 @@
-import { ensureDb, success, error, jsonResponse, toCamelCase } from "@/lib/api-helper";
-import { getDb } from "@/lib/db/index";
-
-function parseTags(row: Record<string, unknown>) {
-  return { ...toCamelCase(row), tags: JSON.parse(String(row.tags || "[]")) };
-}
+import { NextResponse } from "next/server";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { success, error, jsonResponse } from "@/lib/api-helper";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureDb();
-    const db = getDb();
+    const supabase = await createServerSupabase();
     const { id } = await params;
-    const plugin = db.prepare("SELECT * FROM plugins WHERE id = ?").get(id) as Record<string, unknown> | undefined;
-    if (!plugin) return jsonResponse(error("插件不存在"), 404);
-    return jsonResponse(success(parseTags(plugin)));
+
+    const { data, error: err } = await supabase
+      .from("agenthub_plugins")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (err || !data) return jsonResponse(error("插件不存在"), 404);
+    return jsonResponse(success(data));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }
@@ -26,35 +28,39 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureDb();
-    const db = getDb();
+    const supabase = await createServerSupabase();
     const { id } = await params;
-    const existing = db.prepare("SELECT * FROM plugins WHERE id = ?").get(id) as Record<string, unknown> | undefined;
-    if (!existing) return jsonResponse(error("插件不存在"), 404);
+
+    const { data: existing, error: getErr } = await supabase
+      .from("agenthub_plugins")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (getErr || !existing) return jsonResponse(error("插件不存在"), 404);
 
     const body = await request.json();
-    const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+    const updates: Record<string, unknown> = {};
+    if (body.name !== undefined) updates.name = body.name;
+    if (body.description !== undefined) updates.description = body.description;
+    if (body.version !== undefined) updates.version = body.version;
+    if (body.author !== undefined) updates.author = body.author;
+    if (body.category !== undefined) updates.category = body.category;
+    if (body.downloads !== undefined) updates.downloads = body.downloads;
+    if (body.rating !== undefined) updates.rating = body.rating;
+    if (body.status !== undefined) updates.status = body.status;
+    if (body.tags !== undefined) updates.tags = body.tags;
+    if (body.icon !== undefined) updates.icon = body.icon;
 
-    db.prepare(`
-      UPDATE plugins SET name=?, description=?, version=?, author=?, category=?, downloads=?, rating=?, status=?, tags=?, icon=?, updated_at=?
-      WHERE id=?
-    `).run(
-      body.name ?? existing.name,
-      body.description ?? existing.description,
-      body.version ?? existing.version,
-      body.author ?? existing.author,
-      body.category ?? existing.category,
-      body.downloads ?? existing.downloads,
-      body.rating ?? existing.rating,
-      body.status ?? existing.status,
-      body.tags ? JSON.stringify(body.tags) : existing.tags,
-      body.icon ?? existing.icon,
-      now,
-      id
-    );
+    const { data, error: err } = await supabase
+      .from("agenthub_plugins")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
 
-    const plugin = db.prepare("SELECT * FROM plugins WHERE id = ?").get(id) as Record<string, unknown>;
-    return jsonResponse(success(parseTags(plugin)));
+    if (err) return jsonResponse(error(err.message), 500);
+    return jsonResponse(success(data));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }
@@ -65,13 +71,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureDb();
-    const db = getDb();
+    const supabase = await createServerSupabase();
     const { id } = await params;
-    const existing = db.prepare("SELECT * FROM plugins WHERE id = ?").get(id);
-    if (!existing) return jsonResponse(error("插件不存在"), 404);
 
-    db.prepare("DELETE FROM plugins WHERE id = ?").run(id);
+    const { error: err } = await supabase
+      .from("agenthub_plugins")
+      .delete()
+      .eq("id", id);
+
+    if (err) return jsonResponse(error(err.message), 500);
     return jsonResponse(success({ deleted: true }));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);

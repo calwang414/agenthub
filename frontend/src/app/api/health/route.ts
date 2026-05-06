@@ -1,19 +1,23 @@
 import { NextResponse } from "next/server";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 export async function GET() {
   try {
-    const raw = readFileSync(
-      join(process.cwd(), "src/lib/project-uuid.json"),
-      "utf-8"
-    );
-    const { uuid } = JSON.parse(raw);
-    return NextResponse.json({ uuid });
-  } catch {
-    return NextResponse.json(
-      { error: "project-uuid.json not found" },
-      { status: 500 }
-    );
+    const supabase = await createServerSupabase();
+    const { data, error } = await supabase
+      .from("agenthub_users")
+      .select("count", { count: "exact", head: true });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      status: "healthy",
+      database: "connected",
+      users_count: data,
+    });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }

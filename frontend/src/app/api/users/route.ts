@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { createServerSupabase, createServerSupabaseAdmin } from "@/lib/supabase/server";
 import { success, error, jsonResponse } from "@/lib/api-helper";
 
 export async function GET() {
@@ -19,7 +19,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createServerSupabase();
+    const supabase = await createServerSupabaseAdmin();
     const body = await request.json();
 
     const { data: authData, error: authErr } = await supabase.auth.admin.createUser({

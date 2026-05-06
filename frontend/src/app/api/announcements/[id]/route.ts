@@ -1,30 +1,23 @@
-import { ensureDb, success, error, jsonResponse, toCamelCase } from "@/lib/api-helper";
-import { getDb } from "@/lib/db/index";
-
-function parseBool(v: unknown): boolean {
-  return v === 1 || v === true || v === "1";
-}
-
-function parseAnnouncement(row: Record<string, unknown>) {
-  const r = toCamelCase(row);
-  return {
-    ...r,
-    isDismissible: parseBool(row.is_dismissible),
-    isActive: parseBool(row.is_active),
-  };
-}
+import { NextResponse } from "next/server";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { success, error, jsonResponse } from "@/lib/api-helper";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureDb();
-    const db = getDb();
+    const supabase = await createServerSupabase();
     const { id } = await params;
-    const announcement = db.prepare("SELECT * FROM announcements WHERE id = ?").get(id) as Record<string, unknown> | undefined;
-    if (!announcement) return jsonResponse(error("公告不存在"), 404);
-    return jsonResponse(success(parseAnnouncement(announcement)));
+
+    const { data, error: err } = await supabase
+      .from("agenthub_announcements")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (err || !data) return jsonResponse(error("公告不存在"), 404);
+    return jsonResponse(success(data));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }
@@ -35,31 +28,37 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureDb();
-    const db = getDb();
+    const supabase = await createServerSupabase();
     const { id } = await params;
-    const existing = db.prepare("SELECT * FROM announcements WHERE id = ?").get(id) as Record<string, unknown> | undefined;
-    if (!existing) return jsonResponse(error("公告不存在"), 404);
+
+    const { data: existing, error: getErr } = await supabase
+      .from("agenthub_announcements")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (getErr || !existing) return jsonResponse(error("公告不存在"), 404);
 
     const body = await request.json();
+    const updates: Record<string, unknown> = {};
+    if (body.title !== undefined) updates.title = body.title;
+    if (body.content !== undefined) updates.content = body.content;
+    if (body.priority !== undefined) updates.priority = body.priority;
+    if (body.linkUrl !== undefined) updates.link_url = body.linkUrl;
+    if (body.isDismissible !== undefined) updates.is_dismissible = body.isDismissible;
+    if (body.isActive !== undefined) updates.is_active = body.isActive;
+    if (body.publishAt !== undefined) updates.publish_at = body.publishAt || null;
+    if (body.expireAt !== undefined) updates.expire_at = body.expireAt || null;
 
-    db.prepare(`
-      UPDATE announcements SET title=?, content=?, priority=?, link_url=?, is_dismissible=?, is_active=?, publish_at=?, expire_at=?
-      WHERE id=?
-    `).run(
-      body.title ?? existing.title,
-      body.content ?? existing.content,
-      body.priority ?? existing.priority,
-      body.linkUrl ?? existing.link_url,
-      body.isDismissible !== undefined ? (body.isDismissible ? 1 : 0) : existing.is_dismissible,
-      body.isActive !== undefined ? (body.isActive ? 1 : 0) : existing.is_active,
-      body.publishAt !== undefined ? (body.publishAt || null) : existing.publish_at,
-      body.expireAt !== undefined ? (body.expireAt || null) : existing.expire_at,
-      id
-    );
+    const { data, error: err } = await supabase
+      .from("agenthub_announcements")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
 
-    const announcement = db.prepare("SELECT * FROM announcements WHERE id = ?").get(id) as Record<string, unknown>;
-    return jsonResponse(success(parseAnnouncement(announcement)));
+    if (err) return jsonResponse(error(err.message), 500);
+    return jsonResponse(success(data));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }
@@ -70,13 +69,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureDb();
-    const db = getDb();
+    const supabase = await createServerSupabase();
     const { id } = await params;
-    const existing = db.prepare("SELECT * FROM announcements WHERE id = ?").get(id);
-    if (!existing) return jsonResponse(error("公告不存在"), 404);
 
-    db.prepare("DELETE FROM announcements WHERE id = ?").run(id);
+    const { error: err } = await supabase
+      .from("agenthub_announcements")
+      .delete()
+      .eq("id", id);
+
+    if (err) return jsonResponse(error(err.message), 500);
     return jsonResponse(success({ deleted: true }));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);

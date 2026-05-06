@@ -145,7 +145,7 @@ export default function PersonalCenterPopover({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const userInitial = profile?.name?.charAt(0) ?? "?";
-  const roleLabel = user?.role === "admin" ? "管理员" : user?.role === "editor" ? "编辑" : "访客";
+  const roleLabel = profile?.role === "admin" ? "管理员" : profile?.role === "editor" ? "编辑" : "访客";
   const [editName, setEditName] = useState(profile?.name || user?.email?.split("@")[0] || "");
   const [editPassword, setEditPassword] = useState("");
   const [editConfirmPassword, setEditConfirmPassword] = useState("");
@@ -454,7 +454,7 @@ export default function PersonalCenterPopover({
                     <div>
                       <div style={{ fontFamily: displayFont, fontSize: "18px", fontWeight: 400, color: CSS.ink, letterSpacing: "-0.3px" }}>{profile?.name || user?.email?.split("@")[0]}</div>
                       <div style={{ fontFamily: bodyFont, fontSize: "12px", color: CSS.mutedSoft, marginTop: "2px" }}>
-                        @{profile?.name || user?.email?.split("@")[0]} · {user?.email} · {roleLabel} · {user?.createdAt} 加入
+                        @{profile?.name || user?.email?.split("@")[0]} · {user?.email} · {roleLabel} · {user?.created_at ? new Date(user.created_at).toLocaleDateString("zh-CN") : ""} 加入
                       </div>
                     </div>
                   </div>
@@ -477,7 +477,7 @@ export default function PersonalCenterPopover({
                     </div>
                     <div style={{ padding: "8px 12px", background: CSS.surfaceSoft, borderRadius: "8px" }}>
                       <div style={{ fontFamily: bodyFont, fontSize: "11px", color: CSS.mutedSoft, marginBottom: "2px" }}>手机号</div>
-                      <div style={{ fontFamily: bodyFont, fontSize: "13px", color: CSS.ink, fontWeight: 500 }}>{user?.phone || "未设置"}</div>
+                      <div style={{ fontFamily: bodyFont, fontSize: "13px", color: CSS.ink, fontWeight: 500 }}>{profile?.phone || "未设置"}</div>
                     </div>
                     <div style={{ padding: "8px 12px", background: CSS.surfaceSoft, borderRadius: "8px" }}>
                       <div style={{ fontFamily: bodyFont, fontSize: "11px", color: CSS.mutedSoft, marginBottom: "2px" }}>角色</div>
@@ -485,7 +485,7 @@ export default function PersonalCenterPopover({
                     </div>
                     <div style={{ padding: "8px 12px", background: CSS.surfaceSoft, borderRadius: "8px" }}>
                       <div style={{ fontFamily: bodyFont, fontSize: "11px", color: CSS.mutedSoft, marginBottom: "2px" }}>注册时间</div>
-                      <div style={{ fontFamily: bodyFont, fontSize: "13px", color: CSS.ink, fontWeight: 500 }}>{user?.createdAt}</div>
+                      <div style={{ fontFamily: bodyFont, fontSize: "13px", color: CSS.ink, fontWeight: 500 }}>{user?.created_at ? new Date(user.created_at).toLocaleDateString("zh-CN") : ""}</div>
                     </div>
                     <div style={{ padding: "8px 12px", background: CSS.surfaceSoft, borderRadius: "8px" }}>
                       <div style={{ fontFamily: bodyFont, fontSize: "11px", color: CSS.mutedSoft, marginBottom: "2px" }}>账号状态</div>

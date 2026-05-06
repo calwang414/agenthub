@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef, type DragEvent, type
 import type { Plugin } from "@/lib/mock/plugins";
 import type { Tag } from "@/lib/mock/tags";
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from "@/lib/api-client";
+import { createClient } from "@/lib/supabase/client";
 import AdminLayout from "@/components/ui/admin-layout";
 
 type ViewMode = "table" | "card";
@@ -74,6 +75,8 @@ export default function AdminPluginsPage() {
   const [coverImageDragOver, setCoverImageDragOver] = useState(false);
   const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
   const coverImageInputRef = useRef<HTMLInputElement>(null);
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconPreview, setIconPreview] = useState<string>("");
   const editorRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
@@ -242,6 +245,8 @@ export default function AdminPluginsPage() {
     setPackageFile(null);
     setCoverImageFile(null);
     setCoverImagePreview(null);
+    setIconFile(null);
+    setIconPreview("");
     apiGet<Tag[]>("/api/tags").then((data) => setTagLibrary(data.filter((t) => t.status === "enabled"))).catch(() => {});
     setShowModal(true);
   };
@@ -259,6 +264,8 @@ export default function AdminPluginsPage() {
     setPackageFile(null);
     setCoverImageFile(null);
     setCoverImagePreview(null);
+    setIconFile(null);
+    setIconPreview("");
     apiGet<Tag[]>("/api/tags").then((data) => setTagLibrary(data.filter((t) => t.status === "enabled"))).catch(() => {});
     setShowModal(true);
   };
@@ -344,6 +351,29 @@ export default function AdminPluginsPage() {
     }
   };
 
+  async function uploadPluginIcon(pluginId: string): Promise<string | null> {
+    if (!iconFile) return null;
+    try {
+      const supabase = createClient();
+      const ext = iconFile.name.split(".").pop() || "png";
+      const filePath = `icons/${pluginId}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from("agenthub")
+        .upload(filePath, iconFile, { upsert: true });
+
+      if (error) {
+        console.error("图标上传失败:", error.message);
+        return null;
+      }
+
+      return filePath;
+    } catch (e) {
+      console.error("图标上传异常:", e);
+      return null;
+    }
+  }
+
   const handleSave = async () => {
     if (!formData.name.trim()) {
       addToast("插件名称不能为空", "error");
@@ -383,10 +413,18 @@ export default function AdminPluginsPage() {
           if (coverImageFile) {
             formDataUpload.append("coverImage", coverImageFile);
           }
-          await apiUpload("/api/plugins/upload", formDataUpload);
+          const newPlugin = await apiUpload<Plugin>("/api/plugins/upload", formDataUpload);
           addToast(`插件「${formData.name.trim()}」已创建${packageFile ? "，压缩包已上传" : ""}${coverImageFile ? "，封面图已上传" : ""}`, "success");
+          const iconPath = await uploadPluginIcon(newPlugin.id);
+          if (iconPath) {
+            await fetch(`/api/plugins/${newPlugin.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ icon: iconPath }),
+            });
+          }
         } else {
-          await apiPost("/api/plugins", {
+          const newPlugin = await apiPost<Plugin>("/api/plugins", {
             name: formData.name.trim(),
             description: formData.description.trim(),
             version: formData.version.trim(),
@@ -396,6 +434,14 @@ export default function AdminPluginsPage() {
             status: "draft",
           });
           addToast(`插件「${formData.name.trim()}」已创建`, "success");
+          const iconPath = await uploadPluginIcon(newPlugin.id);
+          if (iconPath) {
+            await fetch(`/api/plugins/${newPlugin.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ icon: iconPath }),
+            });
+          }
         }
       }
       fetchPlugins();
@@ -885,6 +931,24 @@ export default function AdminPluginsPage() {
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">插件图标</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setIconFile(file);
+                      setIconPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                  className="w-full text-sm border rounded px-3 py-2"
+                />
+                {iconPreview && (
+                  <img src={iconPreview} alt="图标预览" className="w-16 h-16 mt-2 rounded object-cover" />
+                )}
               </div>
               <div>
                 <label className="block text-sm text-[#3d3d3a] mb-1.5">

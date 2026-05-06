@@ -25,9 +25,13 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    // Supabase 不可达时放行，不阻止页面渲染
+  }
 
   const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
   const isAuthRoute =

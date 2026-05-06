@@ -1,12 +1,17 @@
-import { ensureDb, success, error, jsonResponse, toCamelCase, toCamelCaseArray } from "@/lib/api-helper";
-import { getDb } from "@/lib/db/index";
+import { NextResponse } from "next/server";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { success, error, jsonResponse } from "@/lib/api-helper";
 
 export async function GET() {
   try {
-    ensureDb();
-    const db = getDb();
-    const users = db.prepare("SELECT * FROM users ORDER BY id ASC").all() as Record<string, unknown>[];
-    return jsonResponse(success(toCamelCaseArray(users)));
+    const supabase = await createServerSupabase();
+    const { data, error: err } = await supabase
+      .from("agenthub_users")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (err) return jsonResponse(error(err.message), 500);
+    return jsonResponse(success(data));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }
@@ -14,31 +19,41 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    ensureDb();
-    const db = getDb();
+    const supabase = await createServerSupabase();
     const body = await request.json();
 
-    const newId = String(Date.now());
-    const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+    const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
+      email: body.email || "",
+      password: body.password || "",
+      email_confirm: true,
+    });
 
-    db.prepare(`
-      INSERT INTO users (id, name, nickname, email, phone, password, role, status, created_at, last_active_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      newId,
-      body.name || "",
-      body.nickname || body.name || "",
-      body.email || "",
-      body.phone || "",
-      body.password || "",
-      body.role || "guest",
-      body.status || "active",
-      now,
-      now
-    );
+    if (authErr) return jsonResponse(error(authErr.message), 500);
 
-    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(newId) as Record<string, unknown>;
-    return jsonResponse(success(toCamelCase(user)), 201);
+    if (authData.user) {
+      const { error: profileErr } = await supabase
+        .from("agenthub_users")
+        .update({
+          name: body.name || "",
+          nickname: body.nickname || body.name || "",
+          phone: body.phone || "",
+          role: body.role || "guest",
+          status: body.status || "active",
+        })
+        .eq("id", authData.user.id);
+
+      if (profileErr) return jsonResponse(error(profileErr.message), 500);
+
+      const { data: profile } = await supabase
+        .from("agenthub_users")
+        .select("*")
+        .eq("id", authData.user.id)
+        .single();
+
+      return jsonResponse(success(profile), 201);
+    }
+
+    return jsonResponse(error("用户创建失败"), 500);
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }

@@ -1,20 +1,17 @@
-import { ensureDb, success, error, jsonResponse, toCamelCase } from "@/lib/api-helper";
-import { getDb } from "@/lib/db/index";
-
-function parseRecord(row: Record<string, unknown>) {
-  const r = toCamelCase(row);
-  return {
-    ...r,
-    targetRoles: JSON.parse(String(row.target_roles || "[]")),
-  };
-}
+import { NextResponse } from "next/server";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { success, error, jsonResponse } from "@/lib/api-helper";
 
 export async function GET() {
   try {
-    ensureDb();
-    const db = getDb();
-    const records = db.prepare("SELECT * FROM notification_records ORDER BY sent_at DESC").all();
-    return jsonResponse(success((records as Record<string, unknown>[]).map(parseRecord)));
+    const supabase = await createServerSupabase();
+    const { data, error: err } = await supabase
+      .from("agenthub_notification_records")
+      .select("*")
+      .order("sent_at", { ascending: false });
+
+    if (err) return jsonResponse(error(err.message), 500);
+    return jsonResponse(success(data));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }
@@ -22,27 +19,22 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    ensureDb();
-    const db = getDb();
+    const supabase = await createServerSupabase();
     const body = await request.json();
 
-    const newId = "n" + Date.now();
-    const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+    const { data, error: err } = await supabase
+      .from("agenthub_notification_records")
+      .insert({
+        content: body.content || "",
+        target_type: body.targetType || "all",
+        target_roles: body.targetRoles || [],
+        status: body.status || "sent",
+      })
+      .select()
+      .single();
 
-    db.prepare(`
-      INSERT INTO notification_records (id, content, target_type, target_roles, sent_at, status)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(
-      newId,
-      body.content || "",
-      body.targetType || "all",
-      JSON.stringify(body.targetRoles || []),
-      now,
-      "sent"
-    );
-
-    const record = db.prepare("SELECT * FROM notification_records WHERE id = ?").get(newId) as Record<string, unknown>;
-    return jsonResponse(success(parseRecord(record)), 201);
+    if (err) return jsonResponse(error(err.message), 500);
+    return jsonResponse(success(data), 201);
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }

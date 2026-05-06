@@ -1,16 +1,16 @@
-import { ensureDb, success, error, jsonResponse } from "@/lib/api-helper";
-import { getDb } from "@/lib/db/index";
+import { NextResponse } from "next/server";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { success, error, jsonResponse } from "@/lib/api-helper";
 
 export async function GET() {
   try {
-    ensureDb();
-    const db = getDb();
-    const collections = db.prepare("SELECT * FROM featured_collections").all();
-    const parsed = (collections as Record<string, unknown>[]).map((c) => ({
-      ...c,
-      pluginIds: JSON.parse(String(c.plugin_ids || "[]")),
-    }));
-    return jsonResponse(success(parsed));
+    const supabase = await createServerSupabase();
+    const { data, error: err } = await supabase
+      .from("agenthub_featured_collections")
+      .select("*");
+
+    if (err) return jsonResponse(error(err.message), 500);
+    return jsonResponse(success(data));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }

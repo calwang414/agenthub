@@ -1,17 +1,23 @@
-import { ensureDb, success, error, jsonResponse, toCamelCase } from "@/lib/api-helper";
-import { getDb } from "@/lib/db/index";
+import { NextResponse } from "next/server";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { success, error, jsonResponse } from "@/lib/api-helper";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureDb();
-    const db = getDb();
+    const supabase = await createServerSupabase();
     const { id } = await params;
-    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(id) as Record<string, unknown> | undefined;
-    if (!user) return jsonResponse(error("用户不存在"), 404);
-    return jsonResponse(success(toCamelCase(user)));
+
+    const { data, error: err } = await supabase
+      .from("agenthub_users")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (err || !data) return jsonResponse(error("用户不存在"), 404);
+    return jsonResponse(success(data));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }
@@ -22,32 +28,35 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureDb();
-    const db = getDb();
+    const supabase = await createServerSupabase();
     const { id } = await params;
-    const existing = db.prepare("SELECT * FROM users WHERE id = ?").get(id) as Record<string, unknown> | undefined;
-    if (!existing) return jsonResponse(error("用户不存在"), 404);
+
+    const { data: existing, error: getErr } = await supabase
+      .from("agenthub_users")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (getErr || !existing) return jsonResponse(error("用户不存在"), 404);
 
     const body = await request.json();
-    const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+    const updates: Record<string, unknown> = {};
+    if (body.name !== undefined) updates.name = body.name;
+    if (body.nickname !== undefined) updates.nickname = body.nickname;
+    if (body.phone !== undefined) updates.phone = body.phone;
+    if (body.role !== undefined) updates.role = body.role;
+    if (body.status !== undefined) updates.status = body.status;
+    updates.last_active_at = new Date().toISOString();
 
-    db.prepare(`
-      UPDATE users SET name=?, nickname=?, email=?, phone=?, password=?, role=?, status=?, last_active_at=?
-      WHERE id=?
-    `).run(
-      body.name ?? existing.name,
-      body.nickname ?? existing.nickname,
-      body.email ?? existing.email,
-      body.phone ?? existing.phone,
-      body.password ?? existing.password,
-      body.role ?? existing.role,
-      body.status ?? existing.status,
-      now,
-      id
-    );
+    const { data, error: err } = await supabase
+      .from("agenthub_users")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
 
-    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(id) as Record<string, unknown>;
-    return jsonResponse(success(toCamelCase(user)));
+    if (err) return jsonResponse(error(err.message), 500);
+    return jsonResponse(success(data));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }
@@ -58,13 +67,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureDb();
-    const db = getDb();
+    const supabase = await createServerSupabase();
     const { id } = await params;
-    const existing = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
-    if (!existing) return jsonResponse(error("用户不存在"), 404);
 
-    db.prepare("DELETE FROM users WHERE id = ?").run(id);
+    const { error: err } = await supabase
+      .from("agenthub_users")
+      .delete()
+      .eq("id", id);
+
+    if (err) return jsonResponse(error(err.message), 500);
     return jsonResponse(success({ deleted: true }));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);

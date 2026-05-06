@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import PersonalCenterPopover from "@/components/ui/personal-center-popover";
 
 export default function NavLayout({ children }: { children: React.ReactNode }) {
-  const { user, isLoggedIn, isEditor, logout } = useAuth();
+  const { user, profile, isLoggedIn, isEditor, logout } = useAuth();
   const pathname = usePathname();
 
   return (
@@ -38,13 +38,13 @@ export default function NavLayout({ children }: { children: React.ReactNode }) {
             <PersonalCenterPopover showAdmin={!!isEditor} onLogout={logout}>
               <div className="flex items-center gap-2 cursor-pointer">
                 <div className="w-8 h-8 rounded-full bg-[#cc785c] flex items-center justify-center text-white text-xs font-medium">
-                  {user?.name?.charAt(0) ?? "?"}
+                  {profile?.name?.charAt(0) ?? "?"}
                 </div>
                 <span
                   className="text-[#faf9f5] text-sm hidden sm:inline"
                   style={{ fontFamily: "Inter, sans-serif" }}
                 >
-                  {user?.name}
+                  {profile?.name || user?.email?.split("@")[0]}
                 </span>
               </div>
             </PersonalCenterPopover>

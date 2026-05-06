@@ -41,7 +41,7 @@ function Unauthorized({ message }: { message: string }) {
 }
 
 export default function AdminLayout({ title, children }: { title: string; children: ReactNode }) {
-  const { user, isLoggedIn, isLoading, isAdmin, logout } = useAuth();
+  const { user, profile, isLoggedIn, isLoading, isAdmin, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -142,7 +142,7 @@ export default function AdminLayout({ title, children }: { title: string; childr
                 {userInitial}
               </div>
               <div className="min-w-0">
-                <div className="text-[#faf9f5] text-sm truncate">{user?.name}</div>
+                <div className="text-[#faf9f5] text-sm truncate">{profile?.name || user?.email?.split("@")[0]}</div>
                 <div className="text-[#a09d96] text-xs truncate">{user?.email}</div>
               </div>
             </div>

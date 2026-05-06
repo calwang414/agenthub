@@ -139,15 +139,14 @@ export default function PersonalCenterPopover({
   showAdmin = false,
   onLogout,
 }: PersonalCenterPopoverProps) {
-  const { user: authUser, refreshUser } = useAuth();
+  const { user, profile, logout: authLogout, refreshProfile } = useAuth();
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [modalType, setModalType] = useState<"edit" | "favorites" | "downloads" | "comments" | "messages" | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const user = authUser;
-  const userInitial = (user?.nickname || user?.name)?.charAt(0) ?? "?";
+  const userInitial = profile?.name?.charAt(0) ?? "?";
   const roleLabel = user?.role === "admin" ? "管理员" : user?.role === "editor" ? "编辑" : "访客";
-  const [editName, setEditName] = useState(authUser?.nickname || authUser?.name || "");
+  const [editName, setEditName] = useState(profile?.name || user?.email?.split("@")[0] || "");
   const [editPassword, setEditPassword] = useState("");
   const [editConfirmPassword, setEditConfirmPassword] = useState("");
   const [toastMsg, setToastMsg] = useState("");
@@ -192,7 +191,7 @@ export default function PersonalCenterPopover({
     setPopoverOpen(false);
     setModalType(type);
     if (type === "edit") {
-      setEditName(user?.nickname || user?.name || "");
+      setEditName(profile?.name || user?.email?.split("@")[0] || "");
       setEditPassword("");
       setEditConfirmPassword("");
     }
@@ -221,7 +220,7 @@ export default function PersonalCenterPopover({
       const json = await res.json();
       if (!json.success) throw new Error(json.error || "保存失败");
 
-      await refreshUser();
+      await refreshProfile();
 
       setModalType(null);
       showToast("个人资料已更新");
@@ -320,13 +319,13 @@ export default function PersonalCenterPopover({
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontFamily: bodyFont, fontSize: "14px", fontWeight: 600, color: CSS.ink, lineHeight: 1.3 }}>
-                  {user?.nickname || user?.name}
+                  {profile?.name || user?.email?.split("@")[0]}
                 </div>
                 <div style={{
                   fontFamily: bodyFont, fontSize: "11px", color: CSS.mutedSoft, lineHeight: 1.4,
                   whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                 }}>
-                  @{user?.name} · {roleLabel}
+                  @{profile?.name || user?.email?.split("@")[0]} · {roleLabel}
                 </div>
               </div>
             </div>
@@ -453,9 +452,9 @@ export default function PersonalCenterPopover({
                       {userInitial}
                     </div>
                     <div>
-                      <div style={{ fontFamily: displayFont, fontSize: "18px", fontWeight: 400, color: CSS.ink, letterSpacing: "-0.3px" }}>{user?.nickname || user?.name}</div>
+                      <div style={{ fontFamily: displayFont, fontSize: "18px", fontWeight: 400, color: CSS.ink, letterSpacing: "-0.3px" }}>{profile?.name || user?.email?.split("@")[0]}</div>
                       <div style={{ fontFamily: bodyFont, fontSize: "12px", color: CSS.mutedSoft, marginTop: "2px" }}>
-                        @{user?.name} · {user?.email} · {roleLabel} · {user?.createdAt} 加入
+                        @{profile?.name || user?.email?.split("@")[0]} · {user?.email} · {roleLabel} · {user?.createdAt} 加入
                       </div>
                     </div>
                   </div>
@@ -470,7 +469,7 @@ export default function PersonalCenterPopover({
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                     <div style={{ padding: "8px 12px", background: CSS.surfaceSoft, borderRadius: "8px" }}>
                       <div style={{ fontFamily: bodyFont, fontSize: "11px", color: CSS.mutedSoft, marginBottom: "2px" }}>用户名</div>
-                      <div style={{ fontFamily: bodyFont, fontSize: "13px", color: CSS.ink, fontWeight: 500 }}>{user?.name}</div>
+                      <div style={{ fontFamily: bodyFont, fontSize: "13px", color: CSS.ink, fontWeight: 500 }}>{profile?.name || user?.email?.split("@")[0]}</div>
                     </div>
                     <div style={{ padding: "8px 12px", background: CSS.surfaceSoft, borderRadius: "8px" }}>
                       <div style={{ fontFamily: bodyFont, fontSize: "11px", color: CSS.mutedSoft, marginBottom: "2px" }}>邮箱</div>

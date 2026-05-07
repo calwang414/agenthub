@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
     try {
@@ -64,6 +64,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
   }, [supabase]);
+
+  async function pollForProfile(userId: string, retries = 10, interval = 300): Promise<UserProfile | null> {
+    for (let i = 0; i < retries; i++) {
+      const profile = await fetchProfile(userId);
+      if (profile) return profile;
+      await new Promise((resolve) => setTimeout(resolve, interval));
+    }
+    return null;
+  }
 
   useEffect(() => {
     const initAuth = async () => {
@@ -142,8 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (authData.user) {
         setUser(authData.user);
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        const profileData = await fetchProfile(authData.user.id);
+        const profileData = await pollForProfile(authData.user.id);
         if (profileData) {
           await supabase
             .from("agenthub_users")

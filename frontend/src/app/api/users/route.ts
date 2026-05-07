@@ -45,7 +45,15 @@ export async function POST(request: NextRequest) {
       return jsonResponse(error("创建用户失败"), 500);
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    for (let i = 0; i < 10; i++) {
+      const { data: checkProfile } = await adminClient
+        .from("agenthub_users")
+        .select("id")
+        .eq("id", authData.user.id)
+        .single();
+      if (checkProfile) break;
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
 
     const { error: updateError } = await adminClient
       .from("agenthub_users")

@@ -41,6 +41,13 @@ export interface Category {
   updatedAt: string;
 }
 
+export interface FeaturedCollection {
+  id: string;
+  title: string;
+  description: string;
+  pluginIds: string[];
+}
+
 export interface Announcement {
   id: string;
   title: string;

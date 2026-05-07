@@ -58,6 +58,12 @@ export default function AdminPluginsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingPlugin, setEditingPlugin] = useState<Plugin | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Plugin | null>(null);
+  const [collectionModal, setCollectionModal] = useState<{
+    plugin: Plugin;
+    mode: "add" | "remove";
+    selectedIds: Set<string>;
+  } | null>(null);
+  const [collectionSaving, setCollectionSaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [toasts, setToasts] = useState<{ id: number; message: string; type: "success" | "error" }[]>([]);
@@ -160,6 +166,38 @@ export default function AdminPluginsPage() {
     });
     return map;
   }, [allCollections]);
+
+  const openCollectionModal = useCallback((plugin: Plugin) => {
+    const currentCols = pluginCollectionsMap[plugin.id] || [];
+    setCollectionModal({
+      plugin,
+      mode: "add",
+      selectedIds: new Set(currentCols.map((c) => c.id)),
+    });
+  }, [pluginCollectionsMap]);
+
+  const openRemoveCollectionModal = useCallback((plugin: Plugin) => {
+    const currentCols = pluginCollectionsMap[plugin.id] || [];
+    setCollectionModal({
+      plugin,
+      mode: "remove",
+      selectedIds: new Set(currentCols.map((c) => c.id)),
+    });
+  }, [pluginCollectionsMap]);
+
+  const closeCollectionModal = useCallback(() => {
+    setCollectionModal(null);
+  }, []);
+
+  const toggleCollectionSelect = useCallback((colId: string) => {
+    setCollectionModal((prev) => {
+      if (!prev) return prev;
+      const next = new Set(prev.selectedIds);
+      if (next.has(colId)) next.delete(colId);
+      else next.add(colId);
+      return { ...prev, selectedIds: next };
+    });
+  }, []);
 
   const filteredPlugins = useMemo(() => {
     let result = pluginList;
@@ -1506,6 +1544,80 @@ export default function AdminPluginsPage() {
           </div>
         </div>
       )}
+
+      {/* Collection Selector Modal */}
+      {collectionModal && (() => {
+        const { plugin, mode, selectedIds } = collectionModal;
+        const availableCollections =
+          mode === "add"
+            ? allCollections
+            : allCollections.filter(
+                (col) => pluginCollectionsMap[plugin.id]?.some((c) => c.id === col.id)
+              );
+        const modalTitle = mode === "add" ? "加入精选合集" : "取消精选合集";
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#141413]/30 backdrop-blur-sm"
+            onClick={closeCollectionModal}
+          >
+            <div
+              className="bg-[#faf9f5] rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-6 py-4 border-b border-[#e6dfd8]">
+                <h3 className="text-[#141413] text-base font-medium">{modalTitle}</h3>
+                <p className="text-[#8e8b82] text-sm mt-1">
+                  插件「{plugin.name}」
+                  {mode === "add" ? " — 勾选要加入的合集" : " — 勾选要从中移除的合集"}
+                </p>
+              </div>
+              <div className="px-6 py-4 max-h-64 overflow-y-auto space-y-2">
+                {availableCollections.length === 0 ? (
+                  <p className="text-[#8e8b82] text-sm text-center py-4">
+                    {mode === "add" ? "暂无可用合集" : "该插件尚未加入任何合集"}
+                  </p>
+                ) : (
+                  availableCollections.map((col) => (
+                    <label
+                      key={col.id}
+                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-[#f5f0e8] cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(col.id)}
+                        onChange={() => toggleCollectionSelect(col.id)}
+                        className="mt-0.5 w-4 h-4 rounded accent-[#cc785c] cursor-pointer flex-shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="text-[#141413] text-sm font-medium">{col.title}</div>
+                        {col.description && (
+                          <div className="text-[#8e8b82] text-xs mt-0.5">{col.description}</div>
+                        )}
+                      </div>
+                    </label>
+                  ))
+                )}
+              </div>
+              <div className="flex border-t border-[#e6dfd8]">
+                <button
+                  onClick={closeCollectionModal}
+                  className="flex-1 py-3 text-[#6c6a64] text-sm hover:bg-[#f5f0e8] transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={() => handleCollectionSubmit()}
+                  disabled={collectionSaving}
+                  className="flex-1 py-3 text-sm border-l border-[#e6dfd8] bg-[#cc785c] text-white hover:bg-[#b86a4f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {collectionSaving ? "处理中..." : "确认"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Toasts */}
       <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-2">

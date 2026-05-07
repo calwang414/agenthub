@@ -503,6 +503,18 @@ export default function AdminPluginsPage() {
     return paths;
   }
 
+  async function deleteStorageFiles(tasks: string[]) {
+    const supabase = createClient();
+    const results = await Promise.allSettled(
+      tasks.map((p) => supabase.storage.from("agenthub").remove([p]))
+    );
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled" && r.value.error) {
+        console.error(`删除 Storage 文件失败: ${tasks[i]}`, r.value.error.message);
+      }
+    });
+  }
+
   const handleSave = async () => {
     if (!formData.name.trim()) {
       addToast("插件名称不能为空", "error");
@@ -526,19 +538,40 @@ export default function AdminPluginsPage() {
           tags,
         };
 
+        const storageToDelete: string[] = [];
+
         if (packageFile) {
           const pkgPath = await uploadPackageToStorage(editingPlugin.id);
           if (pkgPath) updatePayload.packageFile = pkgPath;
-        } else if (existingPackageRemoved) {
+          if (existingPackagePath) {
+            storageToDelete.push(existingPackagePath);
+          }
+        } else if (existingPackageRemoved && existingPackagePath) {
           updatePayload.packageFile = "";
+          storageToDelete.push(existingPackagePath);
         }
 
         const keptExistingCovers = existingCoverPaths.filter((_, i) => !removedCoverIndices.has(i));
+        const removedCoverPaths = existingCoverPaths.filter((_, i) => removedCoverIndices.has(i));
+        if (removedCoverPaths.length > 0) {
+          storageToDelete.push(...removedCoverPaths);
+        }
+
         if (coverImageFiles.length > 0) {
-          const newPaths = await uploadCoverImagesToStorage(editingPlugin.id, keptExistingCovers.length);
+          const maxKeptIndex = keptExistingCovers.length > 0
+            ? Math.max(...keptExistingCovers.map((p) => {
+                const match = p.match(/_(\d+)\.\w+$/);
+                return match ? parseInt(match[1], 10) : -1;
+              })) + 1
+            : 0;
+          const newPaths = await uploadCoverImagesToStorage(editingPlugin.id, maxKeptIndex);
           updatePayload.coverImages = [...keptExistingCovers, ...newPaths];
         } else if (removedCoverIndices.size > 0) {
           updatePayload.coverImages = keptExistingCovers;
+        }
+
+        if (storageToDelete.length > 0) {
+          deleteStorageFiles(storageToDelete);
         }
 
         await apiPut(`/api/plugins/${editingPlugin.id}`, updatePayload);

@@ -52,6 +52,10 @@ export async function PUT(
     if (body.icon !== undefined) updates.icon = body.icon;
     if (body.packageFile !== undefined) updates.package_file = body.packageFile;
     if (body.coverImages !== undefined) updates.cover_images = body.coverImages;
+    if (body.readme !== undefined) updates.readme = body.readme;
+    if (body.reviews !== undefined) updates.reviews = body.reviews;
+    if (body.versionHistory !== undefined) updates.version_history = body.versionHistory;
+    if (body.changelog !== undefined) updates.changelog = body.changelog;
 
     const { data, error: err } = await supabase
       .from("agenthub_plugins")

@@ -67,7 +67,6 @@ export default function AdminPluginsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Plugin | null>(null);
   const [collectionModal, setCollectionModal] = useState<{
     plugin: Plugin;
-    mode: "add" | "remove";
     selectedIds: Set<string>;
   } | null>(null);
   const [collectionSaving, setCollectionSaving] = useState(false);
@@ -178,16 +177,6 @@ export default function AdminPluginsPage() {
     const currentCols = pluginCollectionsMap[plugin.id] || [];
     setCollectionModal({
       plugin,
-      mode: "add",
-      selectedIds: new Set(currentCols.map((c) => c.id)),
-    });
-  }, [pluginCollectionsMap]);
-
-  const openRemoveCollectionModal = useCallback((plugin: Plugin) => {
-    const currentCols = pluginCollectionsMap[plugin.id] || [];
-    setCollectionModal({
-      plugin,
-      mode: "remove",
       selectedIds: new Set(currentCols.map((c) => c.id)),
     });
   }, [pluginCollectionsMap]);
@@ -986,16 +975,8 @@ export default function AdminPluginsPage() {
                               onClick={() => openCollectionModal(plugin)}
                               className="px-2 py-1.5 text-[#cc785c] hover:text-[#cc785c] hover:bg-[#cc785c]/8 rounded-md transition-colors text-xs"
                             >
-                              加入精选
+                              精选
                             </button>
-                            {pluginCollectionsMap[plugin.id] && pluginCollectionsMap[plugin.id].length > 0 && (
-                              <button
-                                onClick={() => openRemoveCollectionModal(plugin)}
-                                className="px-2 py-1.5 text-[#8e8b82] hover:text-[#c64545] hover:bg-[#c64545]/8 rounded-md transition-colors text-xs"
-                              >
-                                取消精选
-                              </button>
-                            )}
                           </div>
                         </td>
                       </tr>
@@ -1083,16 +1064,8 @@ export default function AdminPluginsPage() {
                       onClick={() => openCollectionModal(plugin)}
                       className="flex-1 py-1.5 text-xs text-[#cc785c] hover:bg-[#cc785c]/8 rounded-md transition-colors"
                     >
-                      加入精选
+                      精选
                     </button>
-                    {pluginCollectionsMap[plugin.id] && pluginCollectionsMap[plugin.id].length > 0 && (
-                      <button
-                        onClick={() => openRemoveCollectionModal(plugin)}
-                        className="flex-1 py-1.5 text-xs text-[#8e8b82] hover:text-[#c64545] hover:bg-[#c64545]/8 rounded-md transition-colors"
-                      >
-                        取消精选
-                      </button>
-                    )}
                   </div>
                 </div>
               ))}
@@ -1521,14 +1494,7 @@ export default function AdminPluginsPage() {
 
       {/* Collection Selector Modal */}
       {collectionModal && (() => {
-        const { plugin, mode, selectedIds } = collectionModal;
-        const availableCollections =
-          mode === "add"
-            ? allCollections
-            : allCollections.filter(
-                (col) => pluginCollectionsMap[plugin.id]?.some((c) => c.id === col.id)
-              );
-        const modalTitle = mode === "add" ? "加入精选合集" : "取消精选合集";
+        const { plugin, selectedIds } = collectionModal;
 
         return (
           <div
@@ -1540,19 +1506,18 @@ export default function AdminPluginsPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="px-6 py-4 border-b border-[#e6dfd8]">
-                <h3 className="text-[#141413] text-base font-medium">{modalTitle}</h3>
+                <h3 className="text-[#141413] text-base font-medium">精选合集</h3>
                 <p className="text-[#8e8b82] text-sm mt-1">
-                  插件「{plugin.name}」
-                  {mode === "add" ? " — 勾选要加入的合集" : " — 勾选要从中移除的合集"}
+                  插件「{plugin.name}」 — 勾选要加入的合集，取消勾选即可移出
                 </p>
               </div>
               <div className="px-6 py-4 max-h-64 overflow-y-auto space-y-2">
-                {availableCollections.length === 0 ? (
+                {allCollections.length === 0 ? (
                   <p className="text-[#8e8b82] text-sm text-center py-4">
-                    {mode === "add" ? "暂无可用合集" : "该插件尚未加入任何合集"}
+                    暂无可用合集
                   </p>
                 ) : (
-                  availableCollections.map((col) => (
+                  allCollections.map((col) => (
                     <label
                       key={col.id}
                       className="flex items-start gap-3 p-3 rounded-lg hover:bg-[#f5f0e8] cursor-pointer transition-colors"

@@ -199,6 +199,31 @@ export default function AdminPluginsPage() {
     });
   }, []);
 
+  const handleCollectionSubmit = useCallback(async () => {
+    if (!collectionModal) return;
+    const { plugin, selectedIds } = collectionModal;
+    setCollectionSaving(true);
+    try {
+      const result = await apiPost<{ addedTo: string[]; removedFrom: string[] }>(
+        "/api/featured-collections/plugins/featured-update",
+        { pluginId: plugin.id, collectionIds: Array.from(selectedIds) }
+      );
+      const parts: string[] = [];
+      if (result.addedTo.length > 0) parts.push(`已加入：${result.addedTo.join("、")}`);
+      if (result.removedFrom.length > 0) parts.push(`已移除：${result.removedFrom.join("、")}`);
+      addToast(
+        `插件「${plugin.name}」${parts.join("；")}`,
+        "success"
+      );
+      await fetchCollections();
+      setCollectionModal(null);
+    } catch (e) {
+      addToast(`操作失败: ${String(e)}`, "error");
+    } finally {
+      setCollectionSaving(false);
+    }
+  }, [collectionModal, addToast, fetchCollections]);
+
   const filteredPlugins = useMemo(() => {
     let result = pluginList;
     if (search.trim()) {

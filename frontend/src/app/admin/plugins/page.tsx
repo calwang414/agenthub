@@ -401,12 +401,14 @@ export default function AdminPluginsPage() {
         .upload(filePath, iconFile, { upsert: true });
 
       if (error) {
+        addToast(`图标上传失败: ${error.message}`, "error");
         console.error("图标上传失败:", error.message);
         return null;
       }
 
       return filePath;
     } catch (e) {
+      addToast(`图标上传异常: ${String(e)}`, "error");
       console.error("图标上传异常:", e);
       return null;
     }

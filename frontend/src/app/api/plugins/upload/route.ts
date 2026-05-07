@@ -66,7 +66,9 @@ export async function POST(request: Request) {
         .from("agenthub")
         .upload(filePath, packageFile, { upsert: true });
 
-      if (!pkgErr) {
+      if (pkgErr) {
+        console.error("安装包上传失败:", pkgErr.message);
+      } else {
         packagePath = filePath;
       }
     }
@@ -81,7 +83,9 @@ export async function POST(request: Request) {
           .from("agenthub")
           .upload(filePath, file, { upsert: true });
 
-        if (!coverErr) {
+        if (coverErr) {
+          console.error("封面图上传失败:", coverErr.message);
+        } else {
           coverPaths.push(filePath);
         }
       }

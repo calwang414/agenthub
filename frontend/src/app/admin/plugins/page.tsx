@@ -1,5 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
+const CherryMarkdownEditor = dynamic(
+  () => import("@/components/cherry-markdown-editor"),
+  { ssr: false }
+);
+
 import { useState, useMemo, useCallback, useEffect, useRef, type DragEvent, type ChangeEvent } from "react";
 import type { Plugin, Tag, FeaturedCollection } from "@/lib/types";
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from "@/lib/api-client";
@@ -82,8 +89,6 @@ export default function AdminPluginsPage() {
   const [iconPreview, setIconPreview] = useState<string>("");
   const [existingIconPath, setExistingIconPath] = useState<string>("");
   const [iconRemoved, setIconRemoved] = useState(false);
-  const editorRef = useRef<HTMLDivElement>(null);
-
   const storageBaseUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/agenthub`;
 
   const [formData, setFormData] = useState({
@@ -127,8 +132,10 @@ export default function AdminPluginsPage() {
     try {
       const data = await apiGet<FeaturedCollection[]>("/api/featured-collections");
       setAllCollections(data);
-    } catch { /* ignore */ }
-  }, []);
+    } catch {
+      addToast("加载精选合集数据失败", "error");
+    }
+  }, [addToast]);
 
   useEffect(() => {
     fetchPlugins();
@@ -218,7 +225,8 @@ export default function AdminPluginsPage() {
       await fetchCollections();
       setCollectionModal(null);
     } catch (e) {
-      addToast(`操作失败: ${String(e)}`, "error");
+      const message = e instanceof Error ? e.message : "网络请求失败，请稍后重试";
+      addToast(`操作失败: ${message}`, "error");
     } finally {
       setCollectionSaving(false);
     }
@@ -508,17 +516,6 @@ export default function AdminPluginsPage() {
     const previewIndex = existingVisibleCount + newIndex;
     setCoverImageFiles((prev) => prev.filter((_, i) => i !== newIndex));
     setCoverImagePreviews((prev) => prev.filter((_, i) => i !== previewIndex));
-  };
-
-  const execRichCommand = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
-    editorRef.current?.focus();
-  };
-
-  const handleEditorBlur = () => {
-    if (editorRef.current) {
-      setFormData((f) => ({ ...f, description: editorRef.current!.innerHTML }));
-    }
   };
 
   async function uploadPluginIcon(pluginId: string): Promise<string | null> {

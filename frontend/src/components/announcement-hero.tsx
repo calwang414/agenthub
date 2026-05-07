@@ -4,6 +4,27 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import type { Announcement } from "@/lib/types";
 
+function stripMarkdownPreview(md: string, maxLen: number): string {
+  const text = md
+    .replace(/#{1,6}\s+/g, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/~~(.+?)~~/g, "$1")
+    .replace(/`{1,3}[^`]*`{1,3}/g, "")
+    .replace(/\[(.+?)\]\(.*?\)/g, "$1")
+    .replace(/!\[.*?\]\(.*?\)/g, "")
+    .replace(/^\s*[-*+]\s+/gm, "")
+    .replace(/^\s*\d+\.\s+/gm, "")
+    .replace(/\|.*\|/g, "")
+    .replace(/^>/gm, "")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/&[a-z]+;/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (text.length <= maxLen) return text;
+  return text.slice(0, maxLen) + "\u2026";
+}
+
 interface Props {
   announcements: Announcement[];
   onDismiss: (id: string) => void;
@@ -104,8 +125,9 @@ export default function AnnouncementHero({ announcements, onDismiss }: Props) {
           <div
             className="text-[#6c6a64] text-sm leading-relaxed flex-1"
             style={{ fontFamily: "Inter, sans-serif", lineHeight: "1.55" }}
-            dangerouslySetInnerHTML={{ __html: item.content.replace(/<[^>]+>/g, " ").slice(0, 120) + (item.content.length > 120 ? "…" : "") }}
-          />
+          >
+            {stripMarkdownPreview(item.content, 120)}
+          </div>
 
           {item.linkUrl && (
             <div className="mt-4 pt-4 border-t border-[#e6dfd8]">

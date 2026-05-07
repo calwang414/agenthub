@@ -10,6 +10,8 @@ export interface Plugin {
   status: "published" | "draft" | "reviewing";
   tags: string[];
   icon?: string;
+  packageFile?: string;
+  coverImages?: string[];
   createdAt: string;
   updatedAt: string;
 }

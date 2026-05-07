@@ -62,9 +62,9 @@ export default function AdminPluginsPage() {
   const [packageFile, setPackageFile] = useState<File | null>(null);
   const [packageDragOver, setPackageDragOver] = useState(false);
   const packageInputRef = useRef<HTMLInputElement>(null);
-  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [coverImageFiles, setCoverImageFiles] = useState<File[]>([]);
   const [coverImageDragOver, setCoverImageDragOver] = useState(false);
-  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
+  const [coverImagePreviews, setCoverImagePreviews] = useState<string[]>([]);
   const coverImageInputRef = useRef<HTMLInputElement>(null);
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [iconPreview, setIconPreview] = useState<string>("");
@@ -262,8 +262,8 @@ export default function AdminPluginsPage() {
     setEditingPlugin(null);
     setFormData({ name: "", description: "", version: "1.0.0", author: "", category: "Skill", tags: [] });
     setPackageFile(null);
-    setCoverImageFile(null);
-    setCoverImagePreview(null);
+    setCoverImageFiles([]);
+    setCoverImagePreviews([]);
     setIconFile(null);
     setIconPreview("");
     apiGet<Tag[]>("/api/tags").then((data) => setTagLibrary(data.filter((t) => t.status === "enabled"))).catch(() => {});
@@ -281,8 +281,8 @@ export default function AdminPluginsPage() {
       tags: plugin.tags,
     });
     setPackageFile(null);
-    setCoverImageFile(null);
-    setCoverImagePreview(null);
+    setCoverImageFiles([]);
+    setCoverImagePreviews([]);
     setIconFile(null);
     setIconPreview("");
     apiGet<Tag[]>("/api/tags").then((data) => setTagLibrary(data.filter((t) => t.status === "enabled"))).catch(() => {});
@@ -328,32 +328,51 @@ export default function AdminPluginsPage() {
   const handleCoverImageDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setCoverImageDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file && isValidImageFile(file)) {
-      setCoverImageFile(file);
-      const reader = new FileReader();
-      reader.onload = () => setCoverImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
-    } else if (file) {
+    const files = Array.from(e.dataTransfer.files).filter(
+      (f) => isValidImageFile(f)
+    );
+    if (files.length === 0) {
       addToast("仅支持 PNG、JPG 格式的图片", "error");
+      return;
     }
+    const combined = [...coverImageFiles, ...files].slice(0, 5);
+    setCoverImageFiles(combined);
+
+    const readers: Promise<string>[] = combined.map((file) => {
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(readers).then(setCoverImagePreviews);
   };
 
   const handleCoverImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && isValidImageFile(file)) {
-      setCoverImageFile(file);
-      const reader = new FileReader();
-      reader.onload = () => setCoverImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
-    } else if (file) {
+    const files = Array.from(e.target.files || []).filter(
+      (f) => isValidImageFile(f)
+    ).slice(0, 5);
+    if (files.length === 0 && e.target.files && e.target.files.length > 0) {
       addToast("仅支持 PNG、JPG 格式的图片", "error");
+      return;
     }
+    setCoverImageFiles(files);
+
+    const readers: Promise<string>[] = files.map((file) => {
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(readers).then(setCoverImagePreviews);
   };
 
-  const clearCoverImage = () => {
-    setCoverImageFile(null);
-    setCoverImagePreview(null);
+  const clearCoverImage = (index: number) => {
+    setCoverImageFiles((prev) => prev.filter((_, i) => i !== index));
+    setCoverImagePreviews((prev) => prev.filter((_, i) => i !== index));
     if (coverImageInputRef.current) {
       coverImageInputRef.current.value = "";
     }
@@ -403,7 +422,7 @@ export default function AdminPluginsPage() {
       return;
     }
     const tags = formData.tags;
-    const hasFiles = !!(packageFile || coverImageFile);
+    const hasFiles = !!(packageFile || coverImageFiles.length > 0);
 
     try {
       if (editingPlugin) {
@@ -429,11 +448,11 @@ export default function AdminPluginsPage() {
           if (packageFile) {
             formDataUpload.append("package", packageFile);
           }
-          if (coverImageFile) {
-            formDataUpload.append("coverImage", coverImageFile);
-          }
+          coverImageFiles.forEach((file) => {
+            formDataUpload.append("coverImages", file);
+          });
           const newPlugin = await apiUpload<Plugin>("/api/plugins/upload", formDataUpload);
-          addToast(`插件「${formData.name.trim()}」已创建${packageFile ? "，压缩包已上传" : ""}${coverImageFile ? "，封面图已上传" : ""}`, "success");
+          addToast(`插件「${formData.name.trim()}」已创建${packageFile ? "，安装包已上传" : ""}${coverImageFiles.length > 0 ? `，${coverImageFiles.length}张封面图已上传` : ""}`, "success");
           const iconPath = await uploadPluginIcon(newPlugin.id);
           if (iconPath) {
             await fetch(`/api/plugins/${newPlugin.id}`, {
@@ -1063,33 +1082,44 @@ export default function AdminPluginsPage() {
                 )}
               </div>
               <div>
-                <label className="block text-sm text-[#3d3d3a] mb-1.5">封面图</label>
+                <label className="block text-sm text-[#3d3d3a] mb-1.5">封面图（最多5张）</label>
                 <input
                   ref={coverImageInputRef}
                   type="file"
                   accept="image/png,image/jpeg,image/jpg"
+                  multiple
                   onChange={handleCoverImageSelect}
                   className="hidden"
                 />
-                {coverImageFile ? (
-                  <div className="flex items-center gap-3 p-4 bg-[#f5f0e8] border border-[#e6dfd8] rounded-lg">
-                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-[#efe9de] border border-[#e6dfd8] flex-shrink-0">
-                      {coverImagePreview ? (
-                        <img src={coverImagePreview} alt="封面预览" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-2xl">🖼️</div>
-                      )}
+                {coverImageFiles.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex gap-3 overflow-x-auto pb-2">
+                      {coverImageFiles.map((file, i) => (
+                        <div key={i} className="flex-shrink-0 relative group">
+                          <div className="w-24 h-24 rounded-lg overflow-hidden bg-[#efe9de] border border-[#e6dfd8]">
+                            {coverImagePreviews[i] ? (
+                              <img src={coverImagePreviews[i]} alt={`封面 ${i + 1}`} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-2xl">🖼️</div>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => clearCoverImage(i)}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-[#c64545] text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                          >✕</button>
+                          <div className="text-[#8e8b82] text-xs mt-1 truncate w-24 text-center">{file.name}</div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[#141413] text-sm truncate">{coverImageFile.name}</div>
-                      <div className="text-[#8e8b82] text-xs">{formatFileSize(coverImageFile.size)}</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={clearCoverImage}
-                      className="w-7 h-7 flex items-center justify-center rounded text-[#8e8b82] hover:text-[#c64545] hover:bg-[#c64545]/8 transition-colors"
-                      title="移除封面图"
-                    >✕</button>
+                    {coverImageFiles.length < 5 && (
+                      <div
+                        onClick={() => coverImageInputRef.current?.click()}
+                        className="w-24 h-24 border-2 border-dashed border-[#e6dfd8] rounded-lg flex items-center justify-center cursor-pointer hover:border-[#cc785c] transition-colors flex-shrink-0"
+                      >
+                        <span className="text-[#8e8b82] text-2xl">+</span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div
@@ -1103,7 +1133,7 @@ export default function AdminPluginsPage() {
                   >
                     <div className="text-3xl mb-1">🖼️</div>
                     <div className="text-[#8e8b82] text-sm">点击或拖拽上传封面图</div>
-                    <div className="text-[#8e8b82] text-xs mt-0.5">支持 PNG、JPG，最大 2MB</div>
+                    <div className="text-[#8e8b82] text-xs mt-0.5">支持 PNG、JPG，最多5张，每张最大 2MB</div>
                   </div>
                 )}
               </div>

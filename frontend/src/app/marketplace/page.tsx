@@ -2,9 +2,8 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
-import type { Plugin } from "@/lib/mock/plugins";
+import type { Plugin, Announcement } from "@/lib/types";
 import { apiGet } from "@/lib/api-client";
-import type { Announcement } from "@/lib/mock/notifications";
 import NavLayout from "@/components/ui/nav-layout";
 import AnnouncementHero from "@/components/announcement-hero";
 

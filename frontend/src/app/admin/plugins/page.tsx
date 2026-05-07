@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef, type DragEvent, type ChangeEvent } from "react";
-import type { Plugin } from "@/lib/mock/plugins";
-import type { Tag } from "@/lib/mock/tags";
+import type { Plugin, Tag } from "@/lib/types";
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from "@/lib/api-client";
 import { createClient } from "@/lib/supabase/client";
 import AdminLayout from "@/components/ui/admin-layout";

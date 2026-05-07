@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import AdminLayout from "@/components/ui/admin-layout";
-import type { Announcement, NotificationRecord } from "@/lib/mock/notifications";
+import type { Announcement, NotificationRecord } from "@/lib/types";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 
 type ActiveTab = "announcements" | "notifications";

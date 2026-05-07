@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import type { Tag } from "@/lib/mock/tags";
+import type { Tag } from "@/lib/types";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import AdminLayout from "@/components/ui/admin-layout";
 

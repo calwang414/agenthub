@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import AdminLayout from "@/components/ui/admin-layout";
-import type { Plugin } from "@/lib/mock/plugins";
+import type { Plugin } from "@/lib/types";
 import { apiGet } from "@/lib/api-client";
 
 type LoadState = "loading" | "error" | "loaded";

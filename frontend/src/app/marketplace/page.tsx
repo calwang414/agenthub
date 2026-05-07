@@ -6,6 +6,7 @@ import type { Plugin, Announcement } from "@/lib/types";
 import { apiGet } from "@/lib/api-client";
 import NavLayout from "@/components/ui/nav-layout";
 import AnnouncementHero from "@/components/announcement-hero";
+import MarkdownRenderer from "@/components/markdown-renderer";
 
 interface CategoryItem {
   id: string;
@@ -368,12 +369,9 @@ export default function MarketplacePage() {
                     </span>
                   </div>
                 </div>
-                <p
-                  className="text-[#6c6a64] mb-5 line-clamp-2"
-                  style={{ fontFamily: "Inter, sans-serif", fontSize: "14px", lineHeight: "1.55" }}
-                >
-                  {plugin.description}
-                </p>
+                <div className="text-[#6c6a64] mb-5 line-clamp-2" style={{ fontSize: "14px", lineHeight: "1.55" }}>
+                  <MarkdownRenderer content={plugin.description} className="text-[#6c6a64] text-sm" />
+                </div>
                 <div className="flex items-center justify-between">
                   {renderStars(plugin.rating)}
                   <span className="text-[#8e8b82] text-sm" style={{ fontFamily: "Inter, sans-serif" }}>

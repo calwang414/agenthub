@@ -1,6 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+
+const CherryMarkdownEditor = dynamic(
+  () => import("@/components/cherry-markdown-editor"),
+  { ssr: false }
+);
 import AdminLayout from "@/components/ui/admin-layout";
 import type { Announcement, NotificationRecord } from "@/lib/types";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
@@ -10,15 +16,28 @@ type StatusFilter = "全部" | "active" | "disabled";
 type TargetType = "all" | "byRole";
 type RoleOption = "admin" | "editor" | "guest";
 
-function stripHtmlText(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, "")
+function stripMarkdownText(md: string): string {
+  return md
+    .replace(/#{1,6}\s+/g, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/~~(.+?)~~/g, "$1")
+    .replace(/`{1,3}[^`]*`{1,3}/g, "")
+    .replace(/\[(.+?)\]\(.*?\)/g, "$1")
+    .replace(/!\[.*?\]\(.*?\)/g, "")
+    .replace(/^\s*[-*+]\s+/gm, "")
+    .replace(/^\s*\d+\.\s+/gm, "")
+    .replace(/\|.*\|/g, "")
+    .replace(/^>/gm, "")
+    .replace(/```[\s\S]*?```/g, "")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ");
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function truncateText(text: string, maxLen: number): string {
@@ -84,8 +103,6 @@ export default function AdminNotificationsPage() {
   const [showSendConfirm, setShowSendConfirm] = useState(false);
 
   const toastIdRef = useRef(0);
-  const editorRef = useRef<HTMLDivElement>(null);
-  const notifyEditorRef = useRef<HTMLDivElement>(null);
 
   const addToast = useCallback((message: string, type: "success" | "error" = "success") => {
     const id = ++toastIdRef.current;
@@ -117,34 +134,6 @@ export default function AdminNotificationsPage() {
     fetchAnnouncements();
     fetchNotificationRecords();
   }, [fetchAnnouncements, fetchNotificationRecords]);
-
-  const execRichCommand = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
-    editorRef.current?.focus();
-  };
-
-  const execNotifyRichCommand = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
-    notifyEditorRef.current?.focus();
-  };
-
-  const handleEditorBlur = () => {
-    if (editorRef.current) {
-      setFormContent(editorRef.current.innerHTML);
-    }
-  };
-
-  useEffect(() => {
-    if ((modalType === "add" || modalType === "edit") && editorRef.current) {
-      editorRef.current.innerHTML = formContent;
-    }
-  }, [modalType, formContent]);
-
-  const handleNotifyEditorBlur = () => {
-    if (notifyEditorRef.current) {
-      setNotificationContent(notifyEditorRef.current.innerHTML);
-    }
-  };
 
   const [debouncedAnnouncementSearch, setDebouncedAnnouncementSearch] = useState("");
   const [debouncedRecordSearch, setDebouncedRecordSearch] = useState("");
@@ -198,7 +187,7 @@ export default function AdminNotificationsPage() {
     if (debouncedRecordSearch.trim()) {
       const q = debouncedRecordSearch.toLowerCase();
       result = result.filter((r) => {
-        return stripHtmlText(r.content).toLowerCase().includes(q);
+        return stripMarkdownText(r.content).toLowerCase().includes(q);
       });
     }
     return result;
@@ -343,7 +332,7 @@ export default function AdminNotificationsPage() {
   };
 
   const handleSendNotification = () => {
-    const text = stripHtmlText(notificationContent);
+    const text = stripMarkdownText(notificationContent);
     if (!text.trim()) {
       addToast("通知内容不能为空", "error");
       return;
@@ -365,9 +354,6 @@ export default function AdminNotificationsPage() {
       fetchNotificationRecords();
       setShowSendConfirm(false);
       setNotificationContent("");
-      if (notifyEditorRef.current) {
-        notifyEditorRef.current.innerHTML = "";
-      }
       addToast("通知已成功发送", "success");
     } catch (e) {
       addToast(`发送失败: ${String(e)}`, "error");
@@ -494,7 +480,7 @@ export default function AdminNotificationsPage() {
                           <div className="min-w-0">
                             <div className="text-[#141413] text-sm font-medium truncate max-w-[200px]">{a.title}</div>
                             <div className="text-[#8e8b82] text-xs truncate max-w-[200px] mt-0.5">
-                              {truncateText(stripHtmlText(a.content), 50)}
+                              {truncateText(stripMarkdownText(a.content), 50)}
                             </div>
                           </div>
                         </td>
@@ -595,34 +581,12 @@ export default function AdminNotificationsPage() {
                   >发送新通知</h2>
                 <div>
                   <label className="block text-sm text-[#3d3d3a] mb-1.5">通知内容</label>
-                  <div className="border border-[#e6dfd8] rounded-lg overflow-hidden focus-within:border-[#cc785c] focus-within:ring-2 focus-within:ring-[#cc785c]/15 transition-all">
-                    <div className="flex items-center gap-0.5 px-2 py-1.5 bg-[#f5f0e8] border-b border-[#e6dfd8]">
-                      <button type="button" onMouseDown={(e) => { e.preventDefault(); execNotifyRichCommand("bold"); }}
-                        className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors font-bold" title="加粗">B</button>
-                      <button type="button" onMouseDown={(e) => { e.preventDefault(); execNotifyRichCommand("italic"); }}
-                        className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors italic" title="斜体">I</button>
-                      <button type="button" onMouseDown={(e) => { e.preventDefault(); execNotifyRichCommand("underline"); }}
-                        className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors underline" title="下划线">U</button>
-                      <span className="w-px h-4 bg-[#e6dfd8] mx-1" />
-                      <button type="button" onMouseDown={(e) => { e.preventDefault(); execNotifyRichCommand("insertUnorderedList"); }}
-                        className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors" title="无序列表">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
-                      </button>
-                      <button type="button" onMouseDown={(e) => { e.preventDefault(); execNotifyRichCommand("insertOrderedList"); }}
-                        className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors" title="有序列表">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>
-                      </button>
-                      <span className="w-px h-4 bg-[#e6dfd8] mx-1" />
-                      <button type="button" onMouseDown={(e) => { e.preventDefault(); execNotifyRichCommand("removeFormat"); }}
-                        className="w-7 h-7 flex items-center justify-center rounded text-xs text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors" title="清除格式">Tx</button>
-                    </div>
-                    <div
-                      ref={notifyEditorRef}
-                      contentEditable
-                      suppressContentEditableWarning
-                      onBlur={handleNotifyEditorBlur}
-                      className="min-h-[80px] px-3 py-2.5 text-sm text-[#141413] bg-[#faf9f5] outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-[#8e8b82]"
-                      data-placeholder="输入通知内容，支持富文本格式…"
+                  <div className="border border-[#e6dfd8] rounded-lg overflow-hidden">
+                    <CherryMarkdownEditor
+                      value={notificationContent}
+                      onChange={setNotificationContent}
+                      placeholder="输入通知内容，支持 Markdown 格式…"
+                      height="250px"
                     />
                   </div>
                 </div>
@@ -693,7 +657,7 @@ export default function AdminNotificationsPage() {
                         <tr key={r.id} className="border-b border-[#ebe6df] hover:bg-[#f5f0e8] transition-colors">
                           <td className="px-4 py-3">
                             <div className="text-[#141413] text-sm max-w-[300px] truncate">
-                              {truncateText(stripHtmlText(r.content), 60)}
+                              {truncateText(stripMarkdownText(r.content), 60)}
                             </div>
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -789,34 +753,12 @@ export default function AdminNotificationsPage() {
               </div>
               <div>
                 <label className="block text-sm text-[#3d3d3a] mb-1.5">内容</label>
-                <div className="border border-[#e6dfd8] rounded-lg overflow-hidden focus-within:border-[#cc785c] focus-within:ring-2 focus-within:ring-[#cc785c]/15 transition-all">
-                  <div className="flex items-center gap-0.5 px-2 py-1.5 bg-[#f5f0e8] border-b border-[#e6dfd8]">
-                    <button type="button" onMouseDown={(e) => { e.preventDefault(); execRichCommand("bold"); }}
-                      className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors font-bold" title="加粗">B</button>
-                    <button type="button" onMouseDown={(e) => { e.preventDefault(); execRichCommand("italic"); }}
-                      className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors italic" title="斜体">I</button>
-                    <button type="button" onMouseDown={(e) => { e.preventDefault(); execRichCommand("underline"); }}
-                      className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors underline" title="下划线">U</button>
-                    <span className="w-px h-4 bg-[#e6dfd8] mx-1" />
-                    <button type="button" onMouseDown={(e) => { e.preventDefault(); execRichCommand("insertUnorderedList"); }}
-                      className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors" title="无序列表">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
-                    </button>
-                    <button type="button" onMouseDown={(e) => { e.preventDefault(); execRichCommand("insertOrderedList"); }}
-                      className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors" title="有序列表">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>
-                    </button>
-                    <span className="w-px h-4 bg-[#e6dfd8] mx-1" />
-                    <button type="button" onMouseDown={(e) => { e.preventDefault(); execRichCommand("removeFormat"); }}
-                      className="w-7 h-7 flex items-center justify-center rounded text-xs text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors" title="清除格式">Tx</button>
-                  </div>
-                  <div
-                    ref={editorRef}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onBlur={handleEditorBlur}
-                    className="min-h-[80px] max-h-[200px] overflow-y-auto px-3 py-2.5 text-sm text-[#141413] bg-[#faf9f5] outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-[#8e8b82]"
-                    data-placeholder="输入公告内容，支持富文本格式…"
+                <div className="border border-[#e6dfd8] rounded-lg overflow-hidden">
+                  <CherryMarkdownEditor
+                    value={formContent}
+                    onChange={setFormContent}
+                    placeholder="输入公告内容，支持 Markdown 格式…"
+                    height="300px"
                   />
                 </div>
               </div>
@@ -979,7 +921,7 @@ export default function AdminNotificationsPage() {
               <div className="bg-[#f5f0e8] rounded-lg p-3 mb-5 text-left max-h-20 overflow-y-auto">
                 <div className="text-xs text-[#8e8b82] mb-1">通知内容预览</div>
                 <div className="text-sm text-[#3d3d3a]">
-                  {truncateText(stripHtmlText(notificationContent), 100)}
+                  {truncateText(stripMarkdownText(notificationContent), 100)}
                 </div>
               </div>
               <div className="flex gap-3">

@@ -4,6 +4,8 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import type { Plugin, Announcement } from "@/lib/types";
 import { apiGet } from "@/lib/api-client";
+import { formatDownloads } from "@/lib/formatters";
+import { useToast } from "@/hooks/useToast";
 import NavLayout from "@/components/ui/nav-layout";
 import AnnouncementHero from "@/components/announcement-hero";
 import MarkdownRenderer from "@/components/markdown-renderer";
@@ -43,12 +45,6 @@ function getCategoryColor(name: string): string {
   return CATEGORY_COLOR_PALETTE[Math.abs(hash) % CATEGORY_COLOR_PALETTE.length];
 }
 
-function formatDownloads(n: number): string {
-  if (n >= 10000) return (n / 10000).toFixed(1) + "w";
-  if (n >= 1000) return (n / 1000).toFixed(1) + "k";
-  return String(n);
-}
-
 function renderStars(rating: number) {
   const full = Math.floor(rating);
   const half = rating - full >= 0.5;
@@ -68,8 +64,7 @@ export default function MarketplacePage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("全部");
   const [currentPage, setCurrentPage] = useState(1);
-  const [toasts, setToasts] = useState<{ id: number; message: string }[]>([]);
-  const toastIdRef = useRef(0);
+  const { toasts, addToast } = useToast();
   const heroRef = useRef<HTMLDivElement>(null);
 
   const [allPlugins, setAllPlugins] = useState<Plugin[]>([]);
@@ -84,13 +79,6 @@ export default function MarketplacePage() {
     apiGet<CategoryItem[]>("/api/categories").then(setAllCategories).catch(() => {});
   }, []);
 
-  const addToast = useCallback((message: string) => {
-    const id = ++toastIdRef.current;
-    setToasts((prev) => [...prev, { id, message }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 2500);
-  }, []);
 
   const categoryIcons = useMemo(() => {
     const map: Record<string, string> = {};

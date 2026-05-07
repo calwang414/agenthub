@@ -25,8 +25,8 @@ export default function CherryMarkdownEditor({
 
     const Cherry = (await import("cherry-markdown")).default;
 
-    cherryRef.current = new Cherry({
-      id: containerRef.current,
+    const cherryOptions: Record<string, unknown> = {
+      el: containerRef.current,
       value: value || "",
       editor: {
         defaultModel: "editOnly",
@@ -68,7 +68,9 @@ export default function CherryMarkdownEditor({
           onChangeRef.current(text);
         },
       },
-    });
+    };
+
+    cherryRef.current = new Cherry(cherryOptions as any);
   }, [value, height, placeholder]);
 
   useEffect(() => {

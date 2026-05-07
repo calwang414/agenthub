@@ -367,7 +367,7 @@ export default function AdminPluginsPage() {
     setShowModal(true);
   };
 
-  const openEditModal = (plugin: Plugin) => {
+  const openEditModal = async (plugin: Plugin) => {
     setEditingPlugin(plugin);
     setFormData({
       name: plugin.name,
@@ -376,8 +376,8 @@ export default function AdminPluginsPage() {
       author: plugin.author,
       category: plugin.category,
       tags: plugin.tags,
-      readme: plugin.readme || "",
-      changelog: plugin.changelog || "",
+      readme: "",
+      changelog: "",
     });
     setPackageFile(null);
     setExistingPackagePath(plugin.packageFile || "");
@@ -395,6 +395,17 @@ export default function AdminPluginsPage() {
     setIconRemoved(false);
     apiGet<Tag[]>("/api/tags").then((data) => setTagLibrary(data.filter((t) => t.status === "enabled"))).catch(() => {});
     setShowModal(true);
+
+    apiGet<Plugin>(`/api/plugins/${plugin.id}`).then((fullPlugin) => {
+      if (fullPlugin) {
+        setEditingPlugin(fullPlugin);
+        setFormData((prev) => ({
+          ...prev,
+          readme: fullPlugin.readme || "",
+          changelog: fullPlugin.changelog || "",
+        }));
+      }
+    }).catch(() => {});
   };
 
   const handlePackageDrop = (e: DragEvent<HTMLDivElement>) => {

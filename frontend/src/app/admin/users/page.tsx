@@ -1,9 +1,34 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import Link from "next/link";
-import { mockUsers, type MockUser } from "@/lib/mock/users";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import AdminLayout from "@/components/ui/admin-layout";
+
+interface UserData {
+  id: string;
+  name: string;
+  nickname: string;
+  email: string;
+  phone: string;
+  role: "admin" | "editor" | "guest";
+  status: "active" | "disabled";
+  createdAt: string;
+  lastActiveAt: string;
+}
+
+function toCamelUser(obj: Record<string, unknown>): UserData {
+  return {
+    id: obj.id as string,
+    name: obj.name as string,
+    nickname: (obj.nickname as string) || "",
+    email: (obj.email as string) || "",
+    phone: (obj.phone as string) || "",
+    role: obj.role as UserData["role"],
+    status: obj.status as UserData["status"],
+    createdAt: (obj.created_at as string) || "",
+    lastActiveAt: (obj.last_active_at as string) || "",
+  };
+}
 
 type RoleFilter = "全部" | "admin" | "editor" | "guest";
 type StatusFilter = "全部" | "active" | "disabled";
@@ -21,18 +46,18 @@ const STATUS_OPTIONS: { label: string; value: StatusFilter }[] = [
   { label: "已禁用", value: "disabled" },
 ];
 
-const ROLE_MAP: Record<MockUser["role"], { label: string; className: string; description: string }> = {
+const ROLE_MAP: Record<UserData["role"], { label: string; className: string; description: string }> = {
   admin: { label: "管理员", className: "bg-[#e8a55a]/12 text-[#d4a017]", description: "拥有全部权限，可管理用户、插件和系统设置" },
   editor: { label: "编辑", className: "bg-[#5db8a6]/12 text-[#5db8a6]", description: "可创建和编辑插件，管理自己的内容" },
   guest: { label: "访客", className: "bg-[#8e8b82]/12 text-[#6c6a64]", description: "仅可浏览和下载插件，无编辑权限" },
 };
 
-const STATUS_MAP: Record<MockUser["status"], { label: string; className: string }> = {
+const STATUS_MAP: Record<UserData["status"], { label: string; className: string }> = {
   active: { label: "正常", className: "bg-[#5db872]/12 text-[#5db872]" },
   disabled: { label: "已禁用", className: "bg-[#c64545]/12 text-[#c64545]" },
 };
 
-const ROLE_AVATAR_COLORS: Record<MockUser["role"], string> = {
+const ROLE_AVATAR_COLORS: Record<UserData["role"], string> = {
   admin: "bg-[#cc785c]",
   editor: "bg-[#5db8a6]",
   guest: "bg-[#8e8b82]",
@@ -56,11 +81,13 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("全部");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("全部");
   const [currentPage, setCurrentPage] = useState(1);
-  const [userList, setUserList] = useState<MockUser[]>(mockUsers);
-  const [selectedUser, setSelectedUser] = useState<MockUser | null>(null);
+  const [userList, setUserList] = useState<UserData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [modalType, setModalType] = useState<ModalType>(null);
-  const [modalUser, setModalUser] = useState<MockUser | null>(null);
+  const [modalUser, setModalUser] = useState<UserData | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toasts, setToasts] = useState<{ id: number; message: string; type: "success" | "error" }[]>([]);
   const [resetPasswordValue, setResetPasswordValue] = useState("");
@@ -70,7 +97,7 @@ export default function AdminUsersPage() {
     nickname: "",
     email: "",
     phone: "",
-    role: "guest" as MockUser["role"],
+    role: "guest" as UserData["role"],
     password: "",
   });
 
@@ -83,6 +110,25 @@ export default function AdminUsersPage() {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3000);
   }, []);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await apiGet<Record<string, unknown>[]>("/api/users");
+      setUserList(data.map(toCamelUser));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "加载用户列表失败");
+      addToast("加载用户列表失败", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [addToast]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchUsers();
+  }, [fetchUsers]);
 
   const filteredUsers = useMemo(() => {
     let result = userList;
@@ -108,6 +154,7 @@ export default function AdminUsersPage() {
   }, [filteredUsers, currentPage]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [totalPages, currentPage]);
 
@@ -137,7 +184,7 @@ export default function AdminUsersPage() {
     });
   };
 
-  const handleSelectUser = (user: MockUser) => {
+  const handleSelectUser = (user: UserData) => {
     setSelectedUser(user);
     setDetailOpen(true);
   };
@@ -148,60 +195,90 @@ export default function AdminUsersPage() {
   };
 
   const handleToggleStatus = useCallback(
-    (user: MockUser) => {
-      setUserList((prev) =>
-        prev.map((u) =>
-          u.id === user.id
-            ? { ...u, status: (u.status === "active" ? "disabled" : "active") as MockUser["status"] }
-            : u
-        )
-      );
-      if (selectedUser?.id === user.id) {
-        setSelectedUser((prev) =>
-          prev ? { ...prev, status: (prev.status === "active" ? "disabled" : "active") as MockUser["status"] } : null
+    async (user: UserData) => {
+      const newStatus = user.status === "active" ? "disabled" : "active";
+      try {
+        await apiPut(`/api/users/${user.id}`, { status: newStatus });
+        setUserList((prev) =>
+          prev.map((u) => (u.id === user.id ? { ...u, status: newStatus as UserData["status"] } : u))
         );
+        if (selectedUser?.id === user.id) {
+          setSelectedUser((prev) =>
+            prev ? { ...prev, status: newStatus as UserData["status"] } : null
+          );
+        }
+        addToast(`用户「${user.name}」已${newStatus === "disabled" ? "禁用" : "启用"}`, "success");
+      } catch (e) {
+        addToast(e instanceof Error ? e.message : "操作失败", "error");
       }
-      addToast(
-        `用户「${user.name}」已${user.status === "active" ? "禁用" : "启用"}`,
-        "success"
-      );
     },
     [addToast, selectedUser]
   );
 
   const handleDelete = useCallback(
-    (user: MockUser) => {
-      setUserList((prev) => prev.filter((u) => u.id !== user.id));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(user.id);
-        return next;
-      });
-      if (selectedUser?.id === user.id) {
-        setDetailOpen(false);
-        setSelectedUser(null);
+    async (user: UserData) => {
+      try {
+        await apiDelete(`/api/users/${user.id}`);
+        setUserList((prev) => prev.filter((u) => u.id !== user.id));
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(user.id);
+          return next;
+        });
+        if (selectedUser?.id === user.id) {
+          setDetailOpen(false);
+          setSelectedUser(null);
+        }
+        setModalType(null);
+        addToast(`用户「${user.name}」已删除`, "success");
+      } catch (e) {
+        addToast(e instanceof Error ? e.message : "删除失败", "error");
       }
-      setModalType(null);
-      addToast(`用户「${user.name}」已删除`, "success");
     },
     [addToast, selectedUser]
   );
 
-  const handleBatchDelete = () => {
+  const handleBatchDelete = async () => {
+    const ids = Array.from(selectedIds);
     const names = userList
       .filter((u) => selectedIds.has(u.id))
       .map((u) => u.name)
       .join("、");
+
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        await apiDelete(`/api/users/${id}`);
+      } catch {
+        failed++;
+      }
+    }
+
     setUserList((prev) => prev.filter((u) => !selectedIds.has(u.id)));
     if (selectedUser && selectedIds.has(selectedUser.id)) {
       setDetailOpen(false);
       setSelectedUser(null);
     }
     setSelectedIds(new Set());
-    addToast(`已批量删除 ${names}`, "success");
+
+    if (failed > 0) {
+      addToast(`已删除 ${ids.length - failed} 个用户，${failed} 个失败`, "error");
+    } else {
+      addToast(`已批量删除 ${names}`, "success");
+    }
   };
 
-  const handleBatchDisable = () => {
+  const handleBatchDisable = async () => {
+    const ids = Array.from(selectedIds);
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        await apiPut(`/api/users/${id}`, { status: "disabled" });
+      } catch {
+        failed++;
+      }
+    }
+
     setUserList((prev) =>
       prev.map((u) => (selectedIds.has(u.id) ? { ...u, status: "disabled" as const } : u))
     );
@@ -209,7 +286,12 @@ export default function AdminUsersPage() {
       setSelectedUser((prev) => (prev ? { ...prev, status: "disabled" as const } : null));
     }
     setSelectedIds(new Set());
-    addToast("已批量禁用所选用户", "success");
+
+    if (failed > 0) {
+      addToast(`已禁用 ${ids.length - failed} 个用户，${failed} 个失败`, "error");
+    } else {
+      addToast("已批量禁用所选用户", "success");
+    }
   };
 
   const openAddModal = () => {
@@ -218,7 +300,7 @@ export default function AdminUsersPage() {
     setModalType("add");
   };
 
-  const openEditModal = (user: MockUser) => {
+  const openEditModal = (user: UserData) => {
     setModalUser(user);
     setFormData({
       name: user.name,
@@ -231,18 +313,18 @@ export default function AdminUsersPage() {
     setModalType("edit");
   };
 
-  const openDeleteConfirm = (user: MockUser) => {
+  const openDeleteConfirm = (user: UserData) => {
     setModalUser(user);
     setModalType("delete");
   };
 
-  const openResetPasswordModal = (user: MockUser) => {
+  const openResetPasswordModal = (user: UserData) => {
     setModalUser(user);
     setResetPasswordValue(generatePassword());
     setModalType("resetPassword");
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name.trim()) {
       addToast("用户名不能为空", "error");
       return;
@@ -252,42 +334,67 @@ export default function AdminUsersPage() {
       return;
     }
 
-    if (modalType === "edit" && modalUser) {
-      setUserList((prev) =>
-        prev.map((u) =>
-          u.id === modalUser.id
-            ? { ...u, name: formData.name.trim(), email: formData.email.trim(), phone: formData.phone.trim(), role: formData.role }
-            : u
-        )
-      );
-      if (selectedUser?.id === modalUser.id) {
-        setSelectedUser((prev) =>
-          prev ? { ...prev, name: formData.name.trim(), email: formData.email.trim(), phone: formData.phone.trim(), role: formData.role } : null
+    try {
+      if (modalType === "edit" && modalUser) {
+        await apiPut(`/api/users/${modalUser.id}`, {
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          role: formData.role,
+        });
+        setUserList((prev) =>
+          prev.map((u) =>
+            u.id === modalUser.id
+              ? {
+                  ...u,
+                  name: formData.name.trim(),
+                  email: formData.email.trim(),
+                  phone: formData.phone.trim(),
+                  role: formData.role,
+                }
+              : u
+          )
         );
+        if (selectedUser?.id === modalUser.id) {
+          setSelectedUser((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  name: formData.name.trim(),
+                  email: formData.email.trim(),
+                  phone: formData.phone.trim(),
+                  role: formData.role,
+                }
+              : null
+          );
+        }
+        addToast(`用户「${formData.name.trim()}」已更新`, "success");
+      } else {
+        await apiPost("/api/users", {
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          role: formData.role,
+          password: formData.password,
+        });
+        await fetchUsers();
+        addToast(`用户「${formData.name.trim()}」已创建`, "success");
       }
-      addToast(`用户「${formData.name.trim()}」已更新`, "success");
-    } else {
-      const newUser: MockUser = {
-        id: String(Date.now()),
-        name: formData.name.trim(),
-        nickname: formData.nickname || formData.name.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        password: "",
-        role: formData.role,
-        status: "active",
-        createdAt: new Date().toISOString().replace("T", " ").slice(0, 16),
-        lastActiveAt: new Date().toISOString().replace("T", " ").slice(0, 16),
-      };
-      setUserList((prev) => [newUser, ...prev]);
-      addToast(`用户「${formData.name.trim()}」已创建`, "success");
+      setModalType(null);
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "操作失败", "error");
     }
-    setModalType(null);
   };
 
-  const handleResetPassword = () => {
-    if (modalUser) {
+  const handleResetPassword = async () => {
+    if (!modalUser) return;
+    try {
+      await apiPost(`/api/users/${modalUser.id}/reset-password`, {
+        password: resetPasswordValue,
+      });
       addToast(`已为用户「${modalUser.name}」重置密码，新密码：${resetPasswordValue}`, "success");
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "重置密码失败", "error");
     }
     setModalType(null);
   };
@@ -446,7 +553,26 @@ export default function AdminUsersPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {pagedUsers.map((user) => (
+                      {loading && (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-12 text-center text-[#8e8b82] text-sm">
+                            加载中…
+                          </td>
+                        </tr>
+                      )}
+
+                      {!loading && error && (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-12 text-center text-[#c64545] text-sm">
+                            <div className="flex flex-col items-center gap-2">
+                              <span>{error}</span>
+                              <button onClick={fetchUsers} className="text-[#cc785c] hover:underline text-xs">重试</button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+
+                      {!loading && !error && pagedUsers.map((user) => (
                         <tr
                           key={user.id}
                           onClick={() => handleSelectUser(user)}
@@ -512,7 +638,7 @@ export default function AdminUsersPage() {
                           </td>
                         </tr>
                       ))}
-                      {pagedUsers.length === 0 && (
+                      {!loading && !error && pagedUsers.length === 0 && (
                         <tr>
                           <td colSpan={6} className="px-4 py-12 text-center text-[#8e8b82] text-sm">
                             没有找到匹配的用户
@@ -740,7 +866,7 @@ export default function AdminUsersPage() {
                 <label className="block text-sm text-[#3d3d3a] mb-1.5">角色</label>
                 <select
                   value={formData.role}
-                  onChange={(e) => setFormData((f) => ({ ...f, role: e.target.value as MockUser["role"] }))}
+                  onChange={(e) => setFormData((f) => ({ ...f, role: e.target.value as UserData["role"] }))}
                   className="w-full px-3 py-2.5 bg-[#faf9f5] border border-[#e6dfd8] rounded-lg text-sm text-[#141413] focus:outline-none focus:border-[#cc785c] cursor-pointer appearance-none bg-no-repeat"
                   style={{
                     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236c6a64' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,

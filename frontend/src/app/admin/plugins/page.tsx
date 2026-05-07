@@ -897,7 +897,6 @@ export default function AdminPluginsPage() {
                       </th>
                       <th className="px-4 py-3 text-left text-xs text-[#6c6a64] font-medium">插件名称</th>
                       <th className="px-4 py-3 text-left text-xs text-[#6c6a64] font-medium hidden md:table-cell">版本</th>
-                      <th className="px-4 py-3 text-left text-xs text-[#6c6a64] font-medium hidden md:table-cell">作者</th>
                       <th className="px-4 py-3 text-left text-xs text-[#6c6a64] font-medium hidden lg:table-cell">分类</th>
                       <th className="px-4 py-3 text-right text-xs text-[#6c6a64] font-medium hidden lg:table-cell">下载量</th>
                       <th className="px-4 py-3 text-left text-xs text-[#6c6a64] font-medium hidden xl:table-cell">评分</th>
@@ -945,7 +944,6 @@ export default function AdminPluginsPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-[#6c6a64] text-sm hidden md:table-cell">v{plugin.version}</td>
-                        <td className="px-4 py-3 text-[#3d3d3a] text-sm hidden md:table-cell">{plugin.author}</td>
                         <td className="px-4 py-3 hidden lg:table-cell">
                           <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${categoryColors[plugin.category] || ""}`}>
                             {plugin.category}
@@ -1004,7 +1002,7 @@ export default function AdminPluginsPage() {
                     ))}
                     {pagedPlugins.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="px-4 py-12 text-center text-[#8e8b82] text-sm">
+                        <td colSpan={8} className="px-4 py-12 text-center text-[#8e8b82] text-sm">
                           没有找到匹配的插件
                         </td>
                       </tr>
@@ -1051,7 +1049,6 @@ export default function AdminPluginsPage() {
                     </div>
                   )}
                   <div className="flex items-center justify-between text-xs text-[#6c6a64] mb-3">
-                    <span>{plugin.author}</span>
                     <span>v{plugin.version}</span>
                   </div>
                   <div className="flex items-center justify-between mb-3">

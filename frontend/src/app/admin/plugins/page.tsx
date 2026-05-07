@@ -413,6 +413,54 @@ export default function AdminPluginsPage() {
     }
   }
 
+  async function uploadPackageToStorage(pluginId: string): Promise<string | null> {
+    if (!packageFile) return null;
+    try {
+      const supabase = createClient();
+      const fileName = packageFile.name;
+      const ext = fileName.endsWith(".tar.gz") ? "tar.gz" : (fileName.split(".").pop() || "bin");
+      const filePath = `packages/${pluginId}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from("agenthub")
+        .upload(filePath, packageFile, { upsert: true });
+
+      if (error) {
+        addToast(`安装包上传失败: ${error.message}`, "error");
+        return null;
+      }
+
+      return filePath;
+    } catch (e) {
+      addToast(`安装包上传异常: ${String(e)}`, "error");
+      return null;
+    }
+  }
+
+  async function uploadCoverImagesToStorage(pluginId: string): Promise<string[]> {
+    if (coverImageFiles.length === 0) return [];
+    const supabase = createClient();
+    const paths: string[] = [];
+    for (let i = 0; i < coverImageFiles.length; i++) {
+      const file = coverImageFiles[i];
+      const ext = file.name.split(".").pop() || "png";
+      const filePath = `covers/${pluginId}_${i}.${ext}`;
+      try {
+        const { error } = await supabase.storage
+          .from("agenthub")
+          .upload(filePath, file, { upsert: true });
+        if (error) {
+          addToast(`封面图上传失败: ${error.message}`, "error");
+        } else {
+          paths.push(filePath);
+        }
+      } catch (e) {
+        addToast(`封面图上传异常: ${String(e)}`, "error");
+      }
+    }
+    return paths;
+  }
+
   const handleSave = async () => {
     if (!formData.name.trim()) {
       addToast("插件名称不能为空", "error");
@@ -427,14 +475,31 @@ export default function AdminPluginsPage() {
 
     try {
       if (editingPlugin) {
-        await apiPut(`/api/plugins/${editingPlugin.id}`, {
+        const updatePayload: Record<string, unknown> = {
           name: formData.name.trim(),
           description: formData.description.trim(),
           version: formData.version.trim(),
           author: formData.author.trim(),
           category: formData.category,
           tags,
-        });
+        };
+
+        if (packageFile) {
+          const pkgPath = await uploadPackageToStorage(editingPlugin.id);
+          if (pkgPath) updatePayload.packageFile = pkgPath;
+        }
+        if (coverImageFiles.length > 0) {
+          const coverPaths = await uploadCoverImagesToStorage(editingPlugin.id);
+          if (coverPaths.length > 0) updatePayload.coverImages = coverPaths;
+        }
+
+        await apiPut(`/api/plugins/${editingPlugin.id}`, updatePayload);
+
+        const iconPath = await uploadPluginIcon(editingPlugin.id);
+        if (iconPath) {
+          await apiPut(`/api/plugins/${editingPlugin.id}`, { icon: iconPath });
+        }
+
         addToast(`插件「${formData.name.trim()}」已更新`, "success");
       } else {
         if (hasFiles) {

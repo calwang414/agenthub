@@ -1,3 +1,6 @@
+-- 001_schema.sql
+-- 初始 Schema 创建（幂等：仅首次 Supabase 迁移执行）
+-- 若需重新执行，请在 Supabase Dashboard SQL Editor 中手动运行
 -- ==================== agenthub_users ====================
 DROP TABLE IF EXISTS public.agenthub_users CASCADE;
 CREATE TABLE public.agenthub_users (

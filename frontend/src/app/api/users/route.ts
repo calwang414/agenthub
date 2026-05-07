@@ -4,9 +4,33 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { success, error, jsonResponse, toCamelCaseArray, toCamelCase } from "@/lib/api-helper";
 import { validateRequired, validateEmail, validateRole } from "@/lib/validations";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createServerSupabase();
+    const url = new URL(request.url);
+    const pageParam = url.searchParams.get("page");
+    const page = pageParam ? Math.max(1, parseInt(pageParam)) : null;
+    const pageSize = page ? Math.min(100, Math.max(1, parseInt(url.searchParams.get("pageSize") || "50"))) : null;
+
+    if (page && pageSize) {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      const { data, error: err, count } = await supabase
+        .from("agenthub_users")
+        .select("*", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (err) return jsonResponse(error(err.message), 500);
+      return jsonResponse(success({
+        items: toCamelCaseArray(data as Record<string, unknown>[]),
+        total: count ?? 0,
+        page,
+        pageSize,
+        totalPages: Math.ceil((count ?? 0) / pageSize),
+      }));
+    }
+
     const { data, error: err } = await supabase
       .from("agenthub_users")
       .select("*")

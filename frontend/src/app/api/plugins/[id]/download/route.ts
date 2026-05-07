@@ -11,7 +11,7 @@ export async function GET(
 
     const { data: plugin, error: getErr } = await supabase
       .from("agenthub_plugins")
-      .select("name, version, package_file")
+      .select("package_file")
       .eq("id", id)
       .single();
 
@@ -19,10 +19,7 @@ export async function GET(
       return jsonResponse(error("插件不存在"), 404);
     }
 
-    const p = plugin as Record<string, unknown>;
-    const name = (p.name as string) || "plugin";
-    const version = (p.version as string) || "1.0.0";
-    const packageFile = (p.package_file as string) || "";
+    const packageFile = (plugin as Record<string, unknown>).package_file as string || "";
 
     if (!packageFile) {
       return jsonResponse(error("该插件无可下载的安装包"), 404);
@@ -38,8 +35,7 @@ export async function GET(
     }
 
     const blob = await fileResponse.blob();
-    const ext = packageFile.endsWith(".tar.gz") ? "tar.gz" : (packageFile.split(".").pop() || "zip");
-    const rawFilename = `${name}_v${version}.${ext}`;
+    const rawFilename = packageFile.split("/").pop() || "plugin.zip";
     const encodedFilename = encodeURIComponent(rawFilename);
 
     return new Response(blob, {

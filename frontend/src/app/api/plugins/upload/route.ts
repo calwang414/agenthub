@@ -57,6 +57,7 @@ export async function POST(request: Request) {
 
     let packagePath = "";
     const coverPaths: string[] = [];
+    const uploadErrors: string[] = [];
 
     if (packageFile && packageFile.size > 0) {
       const ext = getExt(packageFile.name);
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
         .upload(filePath, packageFile, { upsert: true });
 
       if (pkgErr) {
+        uploadErrors.push(`安装包上传失败: ${pkgErr.message}`);
         console.error("安装包上传失败:", pkgErr.message);
       } else {
         packagePath = filePath;
@@ -84,11 +86,16 @@ export async function POST(request: Request) {
           .upload(filePath, file, { upsert: true });
 
         if (coverErr) {
+          uploadErrors.push(`封面图上传失败: ${coverErr.message}`);
           console.error("封面图上传失败:", coverErr.message);
         } else {
           coverPaths.push(filePath);
         }
       }
+    }
+
+    if (uploadErrors.length > 0 && !packagePath && coverPaths.length === 0) {
+      return jsonResponse(error(uploadErrors.join("; ")), 500);
     }
 
     if (packagePath || coverPaths.length > 0) {
@@ -115,7 +122,11 @@ export async function POST(request: Request) {
         return jsonResponse(success(toCamelCase(plugin as Record<string, unknown>)), 201);
       }
 
-      return jsonResponse(success(toCamelCase(updated as Record<string, unknown>)), 201);
+      const result = toCamelCase(updated as Record<string, unknown>);
+      if (uploadErrors.length > 0) {
+        (result as Record<string, unknown>)._uploadWarnings = uploadErrors;
+      }
+      return jsonResponse(success(result), 201);
     }
 
     return jsonResponse(success(toCamelCase(plugin as Record<string, unknown>)), 201);

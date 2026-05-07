@@ -59,15 +59,21 @@ export default function AdminPluginsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Plugin | null>(null);
   const [toasts, setToasts] = useState<{ id: number; message: string; type: "success" | "error" }[]>([]);
   const [packageFile, setPackageFile] = useState<File | null>(null);
+  const [existingPackagePath, setExistingPackagePath] = useState<string>("");
+  const [existingPackageRemoved, setExistingPackageRemoved] = useState(false);
   const [packageDragOver, setPackageDragOver] = useState(false);
   const packageInputRef = useRef<HTMLInputElement>(null);
   const [coverImageFiles, setCoverImageFiles] = useState<File[]>([]);
+  const [existingCoverPaths, setExistingCoverPaths] = useState<string[]>([]);
+  const [removedCoverIndices, setRemovedCoverIndices] = useState<Set<number>>(new Set());
   const [coverImageDragOver, setCoverImageDragOver] = useState(false);
   const [coverImagePreviews, setCoverImagePreviews] = useState<string[]>([]);
   const coverImageInputRef = useRef<HTMLInputElement>(null);
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [iconPreview, setIconPreview] = useState<string>("");
   const editorRef = useRef<HTMLDivElement>(null);
+
+  const storageBaseUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/agenthub`;
 
   const [formData, setFormData] = useState({
     name: "",
@@ -261,7 +267,11 @@ export default function AdminPluginsPage() {
     setEditingPlugin(null);
     setFormData({ name: "", description: "", version: "1.0.0", author: "", category: "Skill", tags: [] });
     setPackageFile(null);
+    setExistingPackagePath("");
+    setExistingPackageRemoved(false);
     setCoverImageFiles([]);
+    setExistingCoverPaths([]);
+    setRemovedCoverIndices(new Set());
     setCoverImagePreviews([]);
     setIconFile(null);
     setIconPreview("");
@@ -280,10 +290,17 @@ export default function AdminPluginsPage() {
       tags: plugin.tags,
     });
     setPackageFile(null);
+    setExistingPackagePath(plugin.packageFile || "");
+    setExistingPackageRemoved(false);
     setCoverImageFiles([]);
-    setCoverImagePreviews([]);
+    setExistingCoverPaths(plugin.coverImages || []);
+    setRemovedCoverIndices(new Set());
+    const existingPreviews = (plugin.coverImages || []).map(
+      (p) => `${storageBaseUrl}/${p}`
+    );
+    setCoverImagePreviews(existingPreviews);
     setIconFile(null);
-    setIconPreview("");
+    setIconPreview(plugin.icon ? `${storageBaseUrl}/${plugin.icon}` : "");
     apiGet<Tag[]>("/api/tags").then((data) => setTagLibrary(data.filter((t) => t.status === "enabled"))).catch(() => {});
     setShowModal(true);
   };
@@ -334,10 +351,17 @@ export default function AdminPluginsPage() {
       addToast("仅支持 PNG、JPG 格式的图片", "error");
       return;
     }
-    const combined = [...coverImageFiles, ...files].slice(0, 5);
+    const existingVisibleCount = existingCoverPaths.length - removedCoverIndices.size;
+    const maxNew = 5 - existingVisibleCount - coverImageFiles.length;
+    if (maxNew <= 0) {
+      addToast("最多添加 5 张封面图", "error");
+      return;
+    }
+    const toAdd = files.slice(0, maxNew);
+    const combined = [...coverImageFiles, ...toAdd];
     setCoverImageFiles(combined);
 
-    const readers: Promise<string>[] = combined.map((file) => {
+    const readers: Promise<string>[] = toAdd.map((file) => {
       return new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
@@ -345,20 +369,29 @@ export default function AdminPluginsPage() {
       });
     });
 
-    Promise.all(readers).then(setCoverImagePreviews);
+    Promise.all(readers).then((newPreviews) => {
+      setCoverImagePreviews((prev) => [...prev, ...newPreviews]);
+    });
   };
 
   const handleCoverImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const existingVisibleCount = existingCoverPaths.length - removedCoverIndices.size;
+    const maxNew = 5 - existingVisibleCount - coverImageFiles.length;
     const files = Array.from(e.target.files || []).filter(
       (f) => isValidImageFile(f)
-    ).slice(0, 5);
+    );
     if (files.length === 0 && e.target.files && e.target.files.length > 0) {
       addToast("仅支持 PNG、JPG 格式的图片", "error");
       return;
     }
-    setCoverImageFiles(files);
+    if (maxNew <= 0) {
+      addToast("最多添加 5 张封面图", "error");
+      return;
+    }
+    const toAdd = files.slice(0, maxNew);
+    setCoverImageFiles((prev) => [...prev, ...toAdd]);
 
-    const readers: Promise<string>[] = files.map((file) => {
+    const readers: Promise<string>[] = toAdd.map((file) => {
       return new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
@@ -366,15 +399,24 @@ export default function AdminPluginsPage() {
       });
     });
 
-    Promise.all(readers).then(setCoverImagePreviews);
+    Promise.all(readers).then((newPreviews) => {
+      setCoverImagePreviews((prev) => [...prev, ...newPreviews]);
+    });
   };
 
-  const clearCoverImage = (index: number) => {
-    setCoverImageFiles((prev) => prev.filter((_, i) => i !== index));
-    setCoverImagePreviews((prev) => prev.filter((_, i) => i !== index));
-    if (coverImageInputRef.current) {
-      coverImageInputRef.current.value = "";
-    }
+  const removeExistingCover = (existingIndex: number) => {
+    setRemovedCoverIndices((prev) => {
+      const next = new Set(prev);
+      next.add(existingIndex);
+      return next;
+    });
+  };
+
+  const removeNewCover = (newIndex: number) => {
+    const existingVisibleCount = existingCoverPaths.length - removedCoverIndices.size;
+    const previewIndex = existingVisibleCount + newIndex;
+    setCoverImageFiles((prev) => prev.filter((_, i) => i !== newIndex));
+    setCoverImagePreviews((prev) => prev.filter((_, i) => i !== previewIndex));
   };
 
   const execRichCommand = (command: string, value?: string) => {
@@ -437,14 +479,14 @@ export default function AdminPluginsPage() {
     }
   }
 
-  async function uploadCoverImagesToStorage(pluginId: string): Promise<string[]> {
+  async function uploadCoverImagesToStorage(pluginId: string, startIndex = 0): Promise<string[]> {
     if (coverImageFiles.length === 0) return [];
     const supabase = createClient();
     const paths: string[] = [];
     for (let i = 0; i < coverImageFiles.length; i++) {
       const file = coverImageFiles[i];
       const ext = file.name.split(".").pop() || "png";
-      const filePath = `covers/${pluginId}_${i}.${ext}`;
+      const filePath = `covers/${pluginId}_${startIndex + i}.${ext}`;
       try {
         const { error } = await supabase.storage
           .from("agenthub")
@@ -487,10 +529,16 @@ export default function AdminPluginsPage() {
         if (packageFile) {
           const pkgPath = await uploadPackageToStorage(editingPlugin.id);
           if (pkgPath) updatePayload.packageFile = pkgPath;
+        } else if (existingPackageRemoved) {
+          updatePayload.packageFile = "";
         }
+
+        const keptExistingCovers = existingCoverPaths.filter((_, i) => !removedCoverIndices.has(i));
         if (coverImageFiles.length > 0) {
-          const coverPaths = await uploadCoverImagesToStorage(editingPlugin.id);
-          if (coverPaths.length > 0) updatePayload.coverImages = coverPaths;
+          const newPaths = await uploadCoverImagesToStorage(editingPlugin.id, keptExistingCovers.length);
+          updatePayload.coverImages = [...keptExistingCovers, ...newPaths];
+        } else if (removedCoverIndices.size > 0) {
+          updatePayload.coverImages = keptExistingCovers;
         }
 
         await apiPut(`/api/plugins/${editingPlugin.id}`, updatePayload);
@@ -1126,9 +1174,27 @@ export default function AdminPluginsPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setPackageFile(null)}
+                      onClick={() => { setPackageFile(null); setExistingPackageRemoved(false); }}
                       className="w-7 h-7 flex items-center justify-center rounded text-[#8e8b82] hover:text-[#c64545] hover:bg-[#c64545]/8 transition-colors"
                       title="移除文件"
+                    >✕</button>
+                  </div>
+                ) : editingPlugin && existingPackagePath && !existingPackageRemoved ? (
+                  <div className="flex items-center gap-3 p-4 bg-[#f5f0e8] border border-[#e6dfd8] rounded-lg">
+                    <div className="w-10 h-10 rounded-lg bg-[#5db872]/12 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-[#5db872]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[#141413] text-sm truncate">{existingPackagePath.split("/").pop() || existingPackagePath}</div>
+                      <div className="text-[#8e8b82] text-xs">已上传</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setExistingPackageRemoved(true)}
+                      className="w-7 h-7 flex items-center justify-center rounded text-[#8e8b82] hover:text-[#c64545] hover:bg-[#c64545]/8 transition-colors"
+                      title="移除已有安装包"
                     >✕</button>
                   </div>
                 ) : (
@@ -1157,28 +1223,47 @@ export default function AdminPluginsPage() {
                   onChange={handleCoverImageSelect}
                   className="hidden"
                 />
-                {coverImageFiles.length > 0 ? (
+                {(existingCoverPaths.filter((_, i) => !removedCoverIndices.has(i)).length > 0 || coverImageFiles.length > 0) ? (
                   <div className="space-y-3">
                     <div className="flex gap-3 overflow-x-auto pb-2">
-                      {coverImageFiles.map((file, i) => (
-                        <div key={i} className="flex-shrink-0 relative group">
-                          <div className="w-24 h-24 rounded-lg overflow-hidden bg-[#efe9de] border border-[#e6dfd8]">
-                            {coverImagePreviews[i] ? (
-                              <img src={coverImagePreviews[i]} alt={`封面 ${i + 1}`} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-2xl">🖼️</div>
-                            )}
+                      {existingCoverPaths.map((path, i) => {
+                        if (removedCoverIndices.has(i)) return null;
+                        return (
+                          <div key={`existing-cover-${i}`} className="flex-shrink-0 relative group">
+                            <div className="w-24 h-24 rounded-lg overflow-hidden bg-[#efe9de] border border-[#e6dfd8]">
+                              <img src={`${storageBaseUrl}/${path}`} alt={`封面 ${i + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeExistingCover(i)}
+                              className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-[#c64545] text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                            >✕</button>
+                            <div className="text-[#8e8b82] text-xs mt-1 truncate w-24 text-center">{path.split("/").pop() || path}</div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => clearCoverImage(i)}
-                            className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-[#c64545] text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                          >✕</button>
-                          <div className="text-[#8e8b82] text-xs mt-1 truncate w-24 text-center">{file.name}</div>
-                        </div>
-                      ))}
+                        );
+                      })}
+                      {coverImageFiles.map((file, i) => {
+                        const previewIndex = existingCoverPaths.length + i;
+                        return (
+                          <div key={`new-cover-${i}`} className="flex-shrink-0 relative group">
+                            <div className="w-24 h-24 rounded-lg overflow-hidden bg-[#efe9de] border border-[#e6dfd8]">
+                              {coverImagePreviews[previewIndex] ? (
+                                <img src={coverImagePreviews[previewIndex]} alt={`新封面 ${i + 1}`} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-2xl">🖼️</div>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeNewCover(i)}
+                              className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-[#c64545] text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                            >✕</button>
+                            <div className="text-[#8e8b82] text-xs mt-1 truncate w-24 text-center">{file.name}</div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    {coverImageFiles.length < 5 && (
+                    {(existingCoverPaths.length - removedCoverIndices.size + coverImageFiles.length) < 5 && (
                       <div
                         onClick={() => coverImageInputRef.current?.click()}
                         className="w-24 h-24 border-2 border-dashed border-[#e6dfd8] rounded-lg flex items-center justify-center cursor-pointer hover:border-[#cc785c] transition-colors flex-shrink-0"

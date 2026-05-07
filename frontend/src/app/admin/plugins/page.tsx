@@ -97,6 +97,8 @@ export default function AdminPluginsPage() {
     author: "",
     category: "Skill",
     tags: [] as string[],
+    readme: "",
+    changelog: "",
   });
 
   const [tagLibrary, setTagLibrary] = useState<Tag[]>([]);
@@ -349,7 +351,7 @@ export default function AdminPluginsPage() {
 
   const openAddModal = () => {
     setEditingPlugin(null);
-    setFormData({ name: "", description: "", version: "1.0.0", author: "", category: "Skill", tags: [] });
+    setFormData({ name: "", description: "", version: "1.0.0", author: "", category: "Skill", tags: [], readme: "", changelog: "" });
     setPackageFile(null);
     setExistingPackagePath("");
     setExistingPackageRemoved(false);
@@ -374,6 +376,8 @@ export default function AdminPluginsPage() {
       author: plugin.author,
       category: plugin.category,
       tags: plugin.tags,
+      readme: plugin.readme || "",
+      changelog: plugin.changelog || "",
     });
     setPackageFile(null);
     setExistingPackagePath(plugin.packageFile || "");
@@ -1153,13 +1157,23 @@ export default function AdminPluginsPage() {
               </div>
               <div>
                 <label className="block text-sm text-[#3d3d3a] mb-1.5">描述</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))}
+                  placeholder="简要描述插件功能…"
+                  rows={4}
+                  className="w-full px-3 py-2.5 bg-[#faf9f5] border border-[#e6dfd8] rounded-lg text-sm text-[#141413] placeholder-[#8e8b82] focus:outline-none focus:border-[#cc785c] focus:ring-2 focus:ring-[#cc785c]/15 resize-y"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-[#3d3d3a] mb-1.5">详细介绍（README）</label>
                 <div className="border border-[#e6dfd8] rounded-lg overflow-hidden">
                   <CherryMarkdownEditor
-                    value={formData.description}
+                    value={formData.readme}
                     onChange={(md) =>
-                      setFormData((f) => ({ ...f, description: md }))
+                      setFormData((f) => ({ ...f, readme: md }))
                     }
-                    placeholder="简要描述插件功能，支持 Markdown 格式…"
+                    placeholder="编写插件的详细介绍，支持 Markdown 格式…"
                     height="320px"
                   />
                 </div>
@@ -1185,6 +1199,16 @@ export default function AdminPluginsPage() {
                     className="w-full px-3 py-2.5 bg-[#faf9f5] border border-[#e6dfd8] rounded-lg text-sm text-[#141413] placeholder-[#8e8b82] focus:outline-none focus:border-[#cc785c] focus:ring-2 focus:ring-[#cc785c]/15"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm text-[#3d3d3a] mb-1.5">变更说明</label>
+                <textarea
+                  value={formData.changelog}
+                  onChange={(e) => setFormData((f) => ({ ...f, changelog: e.target.value }))}
+                  placeholder="本次版本的变更说明…（修改版本号后，旧变更说明会自动归档到版本历史）"
+                  rows={3}
+                  className="w-full px-3 py-2.5 bg-[#faf9f5] border border-[#e6dfd8] rounded-lg text-sm text-[#141413] placeholder-[#8e8b82] focus:outline-none focus:border-[#cc785c] focus:ring-2 focus:ring-[#cc785c]/15 resize-y"
+                />
               </div>
               <div>
                 <label className="block text-sm text-[#3d3d3a] mb-1.5">分类</label>

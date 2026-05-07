@@ -62,7 +62,7 @@ export default function CherryMarkdownEditor({
       },
       engine: {
         syntax: {
-          table: { enableChart: true },
+          table: { enableChart: false },
           mermaid: true,
         },
       },

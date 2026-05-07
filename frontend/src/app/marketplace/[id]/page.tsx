@@ -10,13 +10,6 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { useDownloads } from "@/hooks/useDownloads";
 import MarkdownRenderer from "@/components/markdown-renderer";
 
-export interface PluginDetail {
-  pluginId: string;
-  readme: string;
-  reviews: Review[];
-  versionHistory: { version: string; date: string; changelog: string[] }[];
-}
-
 const CATEGORY_COLORS: Record<string, string> = {
   Skill: "bg-[#5db8a6]/12 text-[#5db8a6]",
   Agent: "bg-[#cc785c]/12 text-[#cc785c]",
@@ -70,7 +63,6 @@ export default function PluginDetailPage() {
   const id = params.id as string;
 
   const [plugin, setPlugin] = useState<Plugin | undefined>(undefined);
-  const [detail, setDetail] = useState<PluginDetail | undefined>(undefined);
   const [allPlugins, setAllPlugins] = useState<Plugin[]>([]);
   const [versionDrawerOpen, setVersionDrawerOpen] = useState(false);
   const [reviewsExpanded, setReviewsExpanded] = useState(false);
@@ -84,7 +76,6 @@ export default function PluginDetailPage() {
   useEffect(() => {
     apiGet<Plugin[]>("/api/plugins").then(setAllPlugins).catch(() => {});
     apiGet<Plugin>(`/api/plugins/${id}`).then(setPlugin).catch(() => {});
-    apiGet<PluginDetail>(`/api/plugins/${id}/detail`).then(setDetail).catch(() => {});
   }, [id]);
 
   const addToast = useCallback((message: string) => {
@@ -154,16 +145,16 @@ export default function PluginDetailPage() {
     );
   }
 
-  const ratingCount = detail?.reviews.length || 0;
+  const ratingCount = plugin?.reviews.length || 0;
   const avgRating =
-    detail && ratingCount > 0
-      ? detail.reviews.reduce((sum, r) => sum + r.rating, 0) / ratingCount
+    plugin && ratingCount > 0
+      ? plugin.reviews.reduce((sum, r) => sum + r.rating, 0) / ratingCount
       : plugin.rating;
 
-  const currentVersion = detail?.versionHistory[0] || { version: plugin.version, date: plugin.updatedAt, changelog: [] };
+  const currentVersion = plugin?.versionHistory[0] || { version: plugin.version, date: plugin.updatedAt, changelog: [] };
 
   const REVIEWS_PREVIEW = 6;
-  const allReviews = detail?.reviews || [];
+  const allReviews = plugin?.reviews || [];
   const visibleReviews = reviewsExpanded ? allReviews : allReviews.slice(0, REVIEWS_PREVIEW);
   const hasMoreReviews = allReviews.length > REVIEWS_PREVIEW;
 
@@ -291,13 +282,13 @@ console.log("✓ ${plugin.name} is ready.");`}</code>
                       {currentVersion.date}
                     </span>
                   </div>
-                  {detail && detail.versionHistory.length > 1 && (
+                  {plugin && plugin.versionHistory.length > 1 && (
                     <button
                       onClick={() => setVersionDrawerOpen(true)}
                       className="mt-3 text-[#cc785c] text-sm hover:underline flex items-center gap-1"
                       style={{ fontFamily: "Inter, sans-serif" }}
                     >
-                      查看完整版本历史 ({detail.versionHistory.length}) →
+                      查看完整版本历史 ({plugin.versionHistory.length}) →
                     </button>
                   )}
                 </div>
@@ -397,7 +388,7 @@ console.log("✓ ${plugin.name} is ready.");`}</code>
       )}
 
       {/* README / Description */}
-      {detail?.readme && (
+      {plugin?.readme && (
         <section className="bg-[#f5f0e8]" style={{ padding: "96px 32px" }}>
           <div className="max-w-[1200px] mx-auto">
             <h2
@@ -412,14 +403,14 @@ console.log("✓ ${plugin.name} is ready.");`}</code>
               插件介绍
             </h2>
             <div className="bg-[#faf9f5] border border-[#e6dfd8] rounded-xl p-8">
-              <MarkdownRenderer content={detail.readme} />
+              <MarkdownRenderer content={plugin.readme} />
             </div>
           </div>
         </section>
       )}
 
       {/* Reviews (Full Width) */}
-      {detail?.reviews && detail.reviews.length > 0 && (
+      {plugin?.reviews && plugin.reviews.length > 0 && (
         <section style={{ padding: "96px 32px" }}>
           <div className="max-w-[1200px] mx-auto">
             <div className="flex items-center gap-4 mb-8">
@@ -566,7 +557,7 @@ console.log("✓ ${plugin.name} is ready.");`}</code>
       </section>
 
       {/* Version History Drawer */}
-      {versionDrawerOpen && detail?.versionHistory && (
+      {versionDrawerOpen && plugin?.versionHistory && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center"
           onClick={() => setVersionDrawerOpen(false)}
@@ -591,7 +582,7 @@ console.log("✓ ${plugin.name} is ready.");`}</code>
               </button>
             </div>
             <div className="p-6 space-y-4">
-              {detail.versionHistory.map((v, i) => (
+              {plugin.versionHistory.map((v, i) => (
                 <div
                   key={v.version}
                   className={`bg-[#faf9f5] border border-[#e6dfd8] rounded-xl p-5 ${

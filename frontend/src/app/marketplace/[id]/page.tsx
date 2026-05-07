@@ -364,6 +364,39 @@ console.log("✓ ${plugin.name} is ready.");`}</code>
         </div>
       </section>
 
+      {/* Cover Images Gallery */}
+      {plugin.coverImages && plugin.coverImages.length > 0 && (
+        <section className="bg-[#f5f0e8]" style={{ padding: "48px 32px" }}>
+          <div className="max-w-[1200px] mx-auto">
+            <h2
+              className="text-[#141413] mb-6"
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                fontSize: "28px",
+                fontWeight: 400,
+                letterSpacing: "-0.3px",
+              }}
+            >
+              预览截图
+            </h2>
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {plugin.coverImages.map((img: string, i: number) => {
+                const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/agenthub/${img}`;
+                return (
+                  <div key={i} className="flex-shrink-0">
+                    <img
+                      src={url}
+                      alt={`截图 ${i + 1}`}
+                      className="max-w-xs h-48 rounded-lg object-cover border border-[#e6dfd8]"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* README / Description */}
       {detail?.readme && (
         <section className="bg-[#f5f0e8]" style={{ padding: "96px 32px" }}>

@@ -1183,59 +1183,14 @@ export default function AdminPluginsPage() {
               </div>
               <div>
                 <label className="block text-sm text-[#3d3d3a] mb-1.5">描述</label>
-                <div className="border border-[#e6dfd8] rounded-lg overflow-hidden focus-within:border-[#cc785c] focus-within:ring-2 focus-within:ring-[#cc785c]/15 transition-all">
-                  <div className="flex items-center gap-0.5 px-2 py-1.5 bg-[#f5f0e8] border-b border-[#e6dfd8]">
-                    <button
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); execRichCommand("bold"); }}
-                      className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors font-bold"
-                      title="加粗"
-                    >B</button>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); execRichCommand("italic"); }}
-                      className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors italic"
-                      title="斜体"
-                    >I</button>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); execRichCommand("underline"); }}
-                      className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors underline"
-                      title="下划线"
-                    >U</button>
-                    <span className="w-px h-4 bg-[#e6dfd8] mx-1" />
-                    <button
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); execRichCommand("insertUnorderedList"); }}
-                      className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors"
-                      title="无序列表"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
-                    </button>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); execRichCommand("insertOrderedList"); }}
-                      className="w-7 h-7 flex items-center justify-center rounded text-sm text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors"
-                      title="有序列表"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>
-                    </button>
-                    <span className="w-px h-4 bg-[#e6dfd8] mx-1" />
-                    <button
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); execRichCommand("removeFormat"); }}
-                      className="w-7 h-7 flex items-center justify-center rounded text-xs text-[#6c6a64] hover:bg-[#efe9de] hover:text-[#141413] transition-colors"
-                      title="清除格式"
-                    >Tx</button>
-                  </div>
-                  <div
-                    ref={editorRef}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onBlur={handleEditorBlur}
-                    className="min-h-[80px] max-h-[200px] overflow-y-auto px-3 py-2.5 text-sm text-[#141413] bg-[#faf9f5] outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-[#8e8b82]"
-                    data-placeholder="简要描述插件功能，支持富文本格式"
-                    dangerouslySetInnerHTML={{ __html: formData.description }}
+                <div className="border border-[#e6dfd8] rounded-lg overflow-hidden">
+                  <CherryMarkdownEditor
+                    value={formData.description}
+                    onChange={(md) =>
+                      setFormData((f) => ({ ...f, description: md }))
+                    }
+                    placeholder="简要描述插件功能，支持 Markdown 格式…"
+                    height="320px"
                   />
                 </div>
               </div>

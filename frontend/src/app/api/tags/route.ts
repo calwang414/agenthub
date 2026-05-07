@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { success, error, jsonResponse } from "@/lib/api-helper";
+import { success, error, jsonResponse, toCamelCaseArray, toCamelCase } from "@/lib/api-helper";
 
 export async function GET() {
   try {
@@ -11,7 +10,7 @@ export async function GET() {
       .order("sort_order", { ascending: true });
 
     if (err) return jsonResponse(error(err.message), 500);
-    return jsonResponse(success(data));
+    return jsonResponse(success(toCamelCaseArray(data as Record<string, unknown>[])));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }
@@ -46,7 +45,7 @@ export async function POST(request: Request) {
       .single();
 
     if (err) return jsonResponse(error(err.message), 500);
-    return jsonResponse(success(data), 201);
+    return jsonResponse(success(toCamelCase(data as Record<string, unknown>)), 201);
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }

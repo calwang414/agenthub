@@ -67,6 +67,7 @@ export default function AdminUsersPage() {
 
   const [formData, setFormData] = useState({
     name: "",
+    nickname: "",
     email: "",
     phone: "",
     role: "guest" as MockUser["role"],
@@ -213,7 +214,7 @@ export default function AdminUsersPage() {
 
   const openAddModal = () => {
     setModalUser(null);
-    setFormData({ name: "", email: "", phone: "", role: "guest", password: generatePassword() });
+    setFormData({ name: "", nickname: "", email: "", phone: "", role: "guest", password: generatePassword() });
     setModalType("add");
   };
 
@@ -221,6 +222,7 @@ export default function AdminUsersPage() {
     setModalUser(user);
     setFormData({
       name: user.name,
+      nickname: user.nickname,
       email: user.email,
       phone: user.phone,
       role: user.role,
@@ -268,6 +270,7 @@ export default function AdminUsersPage() {
       const newUser: MockUser = {
         id: String(Date.now()),
         name: formData.name.trim(),
+        nickname: formData.nickname || formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         password: "",

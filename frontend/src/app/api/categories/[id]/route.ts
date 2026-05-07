@@ -1,17 +1,23 @@
-import { ensureDb, success, error, jsonResponse, toCamelCase } from "@/lib/api-helper";
-import { getDb } from "@/lib/db/index";
+import { NextResponse } from "next/server";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { success, error, jsonResponse } from "@/lib/api-helper";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureDb();
-    const db = getDb();
+    const supabase = await createServerSupabase();
     const { id } = await params;
-    const category = db.prepare("SELECT * FROM categories WHERE id = ?").get(id) as Record<string, unknown> | undefined;
-    if (!category) return jsonResponse(error("分类不存在"), 404);
-    return jsonResponse(success(toCamelCase(category)));
+
+    const { data, error: err } = await supabase
+      .from("agenthub_categories")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (err || !data) return jsonResponse(error("分类不存在"), 404);
+    return jsonResponse(success(data));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }
@@ -22,31 +28,35 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureDb();
-    const db = getDb();
+    const supabase = await createServerSupabase();
     const { id } = await params;
-    const existing = db.prepare("SELECT * FROM categories WHERE id = ?").get(id) as Record<string, unknown> | undefined;
-    if (!existing) return jsonResponse(error("分类不存在"), 404);
+
+    const { data: existing, error: getErr } = await supabase
+      .from("agenthub_categories")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (getErr || !existing) return jsonResponse(error("分类不存在"), 404);
 
     const body = await request.json();
-    const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+    const updates: Record<string, unknown> = {};
+    if (body.name !== undefined) updates.name = body.name;
+    if (body.icon !== undefined) updates.icon = body.icon;
+    if (body.description !== undefined) updates.description = body.description;
+    if (body.pluginCount !== undefined) updates.plugin_count = body.pluginCount;
+    if (body.sortOrder !== undefined) updates.sort_order = body.sortOrder;
+    if (body.status !== undefined) updates.status = body.status;
 
-    db.prepare(`
-      UPDATE categories SET name=?, icon=?, description=?, plugin_count=?, sort_order=?, status=?, updated_at=?
-      WHERE id=?
-    `).run(
-      body.name ?? existing.name,
-      body.icon ?? existing.icon,
-      body.description ?? existing.description,
-      body.pluginCount ?? existing.plugin_count,
-      body.sortOrder ?? existing.sort_order,
-      body.status ?? existing.status,
-      now,
-      id
-    );
+    const { data, error: err } = await supabase
+      .from("agenthub_categories")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
 
-    const category = db.prepare("SELECT * FROM categories WHERE id = ?").get(id) as Record<string, unknown>;
-    return jsonResponse(success(toCamelCase(category)));
+    if (err) return jsonResponse(error(err.message), 500);
+    return jsonResponse(success(data));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }
@@ -57,13 +67,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    ensureDb();
-    const db = getDb();
+    const supabase = await createServerSupabase();
     const { id } = await params;
-    const existing = db.prepare("SELECT * FROM categories WHERE id = ?").get(id);
-    if (!existing) return jsonResponse(error("分类不存在"), 404);
 
-    db.prepare("DELETE FROM categories WHERE id = ?").run(id);
+    const { error: err } = await supabase
+      .from("agenthub_categories")
+      .delete()
+      .eq("id", id);
+
+    if (err) return jsonResponse(error(err.message), 500);
     return jsonResponse(success({ deleted: true }));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);

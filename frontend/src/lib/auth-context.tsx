@@ -2,9 +2,17 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import type { MockUser } from "@/lib/mock/users";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
-const STORAGE_KEY = "agenthub_auth_user";
+export interface UserProfile {
+  id: string;
+  name: string;
+  nickname: string;
+  phone: string;
+  role: "admin" | "editor" | "guest";
+  status: "active" | "disabled";
+}
 
 export interface RegisterData {
   name: string;
@@ -14,12 +22,13 @@ export interface RegisterData {
 }
 
 interface AuthState {
-  user: MockUser | null;
+  user: User | null;
+  profile: UserProfile | null;
   isLoading: boolean;
-  login: (account: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
-  refreshUser: () => Promise<void>;
+  logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   isAdmin: boolean;
   isEditor: boolean;
   isLoggedIn: boolean;
@@ -27,97 +36,167 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-async function apiCall<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, options);
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error || "请求失败");
-  return json.data as T;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<MockUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const supabase = createClient();
+
+  const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
+    try {
+      const { data, error } = await supabase
+        .from("agenthub_users")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      if (error || !data) return null;
+      return {
+        id: data.id,
+        name: data.name,
+        nickname: data.nickname,
+        phone: data.phone || "",
+        role: data.role,
+        status: data.status,
+      };
+    } catch {
+      return null;
+    }
+  }, [supabase]);
 
   useEffect(() => {
     const initAuth = async () => {
-      if (typeof window === "undefined") {
-        setIsLoading(false);
-        return;
-      }
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const stored = JSON.parse(raw) as MockUser;
-          const currentUser = await apiCall<MockUser>(`/api/users/${stored.id}`);
-          if (currentUser && currentUser.status === "active") {
-            setUser(currentUser);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentUser));
-          } else {
-            localStorage.removeItem(STORAGE_KEY);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser(session.user);
+          const profileData = await fetchProfile(session.user.id);
+          if (profileData) {
+            setProfile(profileData);
           }
         }
       } catch {
-        localStorage.removeItem(STORAGE_KEY);
+        // 会话获取失败，静默处理
       }
       setIsLoading(false);
     };
     initAuth();
-  }, []);
 
-  const login = useCallback(async (account: string, password: string) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        const profileData = await fetchProfile(session.user.id);
+        if (profileData) {
+          setProfile(profileData);
+        }
+      } else {
+        setUser(null);
+        setProfile(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase, fetchProfile]);
+
+  const login = useCallback(async (email: string, password: string) => {
     try {
-      const result = await apiCall<MockUser>("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: account, password }),
-      });
-      setUser(result);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      if (data.user) {
+        setUser(data.user);
+        const profileData = await fetchProfile(data.user.id);
+        setProfile(profileData);
+        if (profileData?.status === "disabled") {
+          await supabase.auth.signOut();
+          setUser(null);
+          setProfile(null);
+          return { success: false, error: "账号已被禁用" };
+        }
+      }
       return { success: true };
     } catch (e) {
-      return { success: false, error: String(e instanceof Error ? e.message : e) };
+      return { success: false, error: String(e) };
     }
-  }, []);
+  }, [supabase, fetchProfile]);
 
   const register = useCallback(async (data: RegisterData) => {
     try {
-      const result = await apiCall<MockUser>("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+      const { data: authData, error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            name: data.name || data.email.split("@")[0],
+            phone: data.phone || "",
+          },
+        },
       });
-      setUser(result);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      if (authData.user) {
+        setUser(authData.user);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const profileData = await fetchProfile(authData.user.id);
+        if (profileData) {
+          await supabase
+            .from("agenthub_users")
+            .update({
+              name: data.name || data.email.split("@")[0],
+              phone: data.phone || "",
+            })
+            .eq("id", authData.user.id);
+          setProfile({
+            ...profileData,
+            name: data.name || data.email.split("@")[0],
+            phone: data.phone || "",
+          });
+        }
+      }
       return { success: true };
     } catch (e) {
-      return { success: false, error: String(e instanceof Error ? e.message : e) };
+      return { success: false, error: String(e) };
     }
-  }, []);
+  }, [supabase, fetchProfile]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
+    setProfile(null);
     router.push("/marketplace");
-  }, [router]);
+  }, [supabase, router]);
 
-  const refreshUser = useCallback(async () => {
+  const refreshProfile = useCallback(async () => {
     if (!user) return;
-    try {
-      const fresh = await apiCall<MockUser>(`/api/users/${user.id}`);
-      setUser(fresh);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
-    } catch {
-      // silently fail — data will refresh on next page load
-    }
-  }, [user]);
+    const profileData = await fetchProfile(user.id);
+    if (profileData) setProfile(profileData);
+  }, [user, fetchProfile]);
 
-  const isAdmin = user?.role === "admin";
-  const isEditor = user?.role === "editor" || user?.role === "admin";
-  const isLoggedIn = user !== null;
+  const isAdmin = profile?.role === "admin";
+  const isEditor = profile?.role === "admin" || profile?.role === "editor";
+  const isLoggedIn = user !== null && profile !== null;
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshUser, isAdmin, isEditor, isLoggedIn }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        isLoading,
+        login,
+        register,
+        logout,
+        refreshProfile,
+        isAdmin,
+        isEditor,
+        isLoggedIn,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

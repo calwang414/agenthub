@@ -1,17 +1,3 @@
-import { getDb } from "./db/index";
-import { initSchema } from "./db/schema";
-import { seed } from "./db/seed";
-
-let initialized = false;
-
-export function ensureDb(): void {
-  if (!initialized) {
-    initSchema();
-    seed();
-    initialized = true;
-  }
-}
-
 export function toCamelCase(obj: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const key of Object.keys(obj)) {
@@ -40,5 +26,7 @@ export function error(message: string): ApiResponse<never> {
 }
 
 export function jsonResponse<T>(data: ApiResponse<T>, status: number = 200): Response {
-  return Response.json(data, { status: data.success ? status : status >= 400 ? status : 400 });
+  return Response.json(data, {
+    status: data.success ? status : status >= 400 ? status : 400,
+  });
 }

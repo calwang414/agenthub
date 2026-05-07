@@ -29,7 +29,7 @@ function LoginPageContent() {
     setError("");
 
     if (!account.trim()) {
-      setError("请输入用户名或手机号");
+      setError("请输入邮箱地址");
       return;
     }
     if (!password) {
@@ -140,14 +140,14 @@ function LoginPageContent() {
               )}
 
               <div style={{ marginBottom: "16px" }}>
-                <label style={labelStyle}>用户名 / 手机号</label>
+                <label style={labelStyle}>邮箱</label>
                 <input
                   type="text"
                   value={account}
                   onChange={(e) => setAccount(e.target.value)}
                   onFocus={() => setFocusedField("account")}
                   onBlur={() => setFocusedField(null)}
-                  placeholder="请输入用户名、邮箱或手机号"
+                  placeholder="请输入邮箱地址"
                   style={getInputStyle("account")}
                 />
               </div>

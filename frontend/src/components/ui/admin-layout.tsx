@@ -41,7 +41,7 @@ function Unauthorized({ message }: { message: string }) {
 }
 
 export default function AdminLayout({ title, children }: { title: string; children: ReactNode }) {
-  const { user, isLoggedIn, isLoading, isAdmin, logout } = useAuth();
+  const { user, profile, isLoggedIn, isLoading, isAdmin, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -75,7 +75,7 @@ export default function AdminLayout({ title, children }: { title: string; childr
     ? ALL_NAV_ITEMS
     : ALL_NAV_ITEMS.filter((item) => !item.adminOnly);
 
-  const userInitial = user?.name?.charAt(0) ?? "?";
+  const userInitial = profile?.name?.charAt(0) ?? user?.email?.charAt(0) ?? "?";
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#faf9f5]">
@@ -142,7 +142,7 @@ export default function AdminLayout({ title, children }: { title: string; childr
                 {userInitial}
               </div>
               <div className="min-w-0">
-                <div className="text-[#faf9f5] text-sm truncate">{user?.name}</div>
+                <div className="text-[#faf9f5] text-sm truncate">{profile?.name || user?.email?.split("@")[0]}</div>
                 <div className="text-[#a09d96] text-xs truncate">{user?.email}</div>
               </div>
             </div>
@@ -162,7 +162,7 @@ export default function AdminLayout({ title, children }: { title: string; childr
             <PersonalCenterPopover onLogout={logout}>
               <div className="flex items-center gap-2 cursor-pointer">
                 <div className="w-7 h-7 rounded-full bg-[#cc785c] flex items-center justify-center text-white text-xs font-medium">
-                  {user?.name?.charAt(0) ?? "?"}
+                  {profile?.name?.charAt(0) ?? user?.email?.charAt(0) ?? "?"}
                 </div>
               </div>
             </PersonalCenterPopover>

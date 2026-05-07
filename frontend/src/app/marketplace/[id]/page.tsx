@@ -8,6 +8,7 @@ import type { Plugin, Review } from "@/lib/types";
 import NavLayout from "@/components/ui/nav-layout";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useDownloads } from "@/hooks/useDownloads";
+import MarkdownRenderer from "@/components/markdown-renderer";
 
 export interface PluginDetail {
   pluginId: string;
@@ -191,12 +192,9 @@ export default function PluginDetailPage() {
                   >
                     {plugin.name}
                   </h1>
-                  <p
-                    className="text-[#6c6a64] mb-4"
-                    style={{ fontFamily: "Inter, sans-serif", fontSize: "16px", lineHeight: "1.55" }}
-                  >
-                    {plugin.description}
-                  </p>
+                  <div className="text-[#6c6a64] mb-4" style={{ fontSize: "16px", lineHeight: "1.55" }}>
+                    <MarkdownRenderer content={plugin.description} />
+                  </div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <span
                       className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${CATEGORY_COLORS[plugin.category]}`}
@@ -414,57 +412,7 @@ console.log("✓ ${plugin.name} is ready.");`}</code>
               插件介绍
             </h2>
             <div className="bg-[#faf9f5] border border-[#e6dfd8] rounded-xl p-8">
-              {detail.readme.split("\n").map((line, i) => {
-                if (line.startsWith("# ")) {
-                  return (
-                    <h3
-                      key={i}
-                      className="text-[#141413] mb-4"
-                      style={{
-                        fontFamily: "'Cormorant Garamond', serif",
-                        fontSize: "22px",
-                        fontWeight: 400,
-                      }}
-                    >
-                      {line.replace("# ", "")}
-                    </h3>
-                  );
-                }
-                if (line.startsWith("## ")) {
-                  return (
-                    <h4
-                      key={i}
-                      className="text-[#141413] mt-8 mb-4"
-                      style={{
-                        fontFamily: "Inter, sans-serif",
-                        fontSize: "16px",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {line.replace("## ", "")}
-                    </h4>
-                  );
-                }
-                if (line.startsWith("- ")) {
-                  return (
-                    <div key={i} className="flex items-start gap-2 text-[#3d3d3a] text-sm mb-1.5 ml-2" style={{ fontFamily: "Inter, sans-serif" }}>
-                      <span className="text-[#cc785c]">•</span>
-                      <span>{line.replace("- ", "")}</span>
-                    </div>
-                  );
-                }
-                if (line.startsWith("```")) return null;
-                if (line.trim() === "") return <div key={i} className="h-3" />;
-                return (
-                  <p
-                    key={i}
-                    className={`text-[#3d3d3a] text-sm leading-relaxed mb-1.5 ${line.startsWith("  ") ? "font-mono text-xs bg-[#f5f0e8] rounded px-2 py-0.5" : ""}`}
-                    style={{ fontFamily: line.startsWith("  ") ? "'JetBrains Mono', monospace" : "Inter, sans-serif" }}
-                  >
-                    {line}
-                  </p>
-                );
-              })}
+              <MarkdownRenderer content={detail.readme} />
             </div>
           </div>
         </section>

@@ -99,7 +99,10 @@ export default function PluginDetailPage() {
     setInstalling(true);
     addToast("正在下载安装包…");
     try {
-      await apiPost(`/api/plugins/${plugin.id}/install`, {});
+      const result = await apiPost<{ downloadUrl: string; newCount: number }>(
+        `/api/plugins/${plugin.id}/install`,
+        {}
+      );
       addDownload({
         pluginId: plugin.id,
         name: plugin.name,
@@ -108,10 +111,9 @@ export default function PluginDetailPage() {
         version: plugin.version,
         icon: CATEGORY_ICONS[plugin.category] || "📦",
       });
-      setTimeout(() => {
-        addToast(`「${plugin.name}」安装成功！已加入下载列表`);
-        setInstalling(false);
-      }, 1500);
+      window.open(result.downloadUrl, "_blank");
+      addToast(`「${plugin.name}」安装成功！已加入下载列表`);
+      setInstalling(false);
     } catch {
       addToast(`「${plugin.name}」安装失败，请稍后重试`);
       setInstalling(false);

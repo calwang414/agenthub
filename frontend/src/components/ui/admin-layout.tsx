@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import PersonalCenterPopover from "@/components/ui/personal-center-popover";
 
@@ -102,13 +103,9 @@ export default function AdminLayout({ title, children }: { title: string; childr
           {filteredNavItems.map((item) => {
             const active = pathname === item.href;
             return (
-              <a
+              <Link
                 key={item.href}
                 href={item.href}
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.location.href = item.href;
-                }}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                   active
                     ? "bg-[#252320] text-[#faf9f5]"
@@ -117,7 +114,7 @@ export default function AdminLayout({ title, children }: { title: string; childr
               >
                 <span className="text-base flex-shrink-0">{item.icon}</span>
                 {!sidebarCollapsed && <span>{item.label}</span>}
-              </a>
+              </Link>
             );
           })}
         </nav>

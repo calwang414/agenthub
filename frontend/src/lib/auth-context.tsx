@@ -118,15 +118,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: error.message };
       }
       if (data.user) {
-        setUser(data.user);
         const profileData = await fetchProfile(data.user.id);
-        setProfile(profileData);
         if (profileData?.status === "disabled") {
           await supabase.auth.signOut();
-          setUser(null);
-          setProfile(null);
           return { success: false, error: "账号已被禁用" };
         }
+        setUser(data.user);
+        setProfile(profileData);
       }
       return { success: true };
     } catch (e) {

@@ -1,14 +1,14 @@
-export function toCamelCase(obj: Record<string, unknown>): Record<string, unknown> {
+export function toCamelCase<T = Record<string, unknown>>(obj: Record<string, unknown>): T {
   const result: Record<string, unknown> = {};
   for (const key of Object.keys(obj)) {
     const camelKey = key.replace(/_([a-z])/g, (_, c) => (c as string).toUpperCase());
     result[camelKey] = obj[key];
   }
-  return result;
+  return result as T;
 }
 
-export function toCamelCaseArray(arr: Record<string, unknown>[]): Record<string, unknown>[] {
-  return arr.map(toCamelCase);
+export function toCamelCaseArray<T = Record<string, unknown>>(arr: Record<string, unknown>[]): T[] {
+  return arr.map((item) => toCamelCase<T>(item));
 }
 
 export interface ApiResponse<T> {

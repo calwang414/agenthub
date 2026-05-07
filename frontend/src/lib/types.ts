@@ -88,24 +88,3 @@ export interface VersionEntry {
   date: string;
   changelog: string[];
 }
-
-export interface MockUser {
-  id: string;
-  name: string;
-  nickname: string;
-  email: string;
-  phone: string;
-  password: string;
-  role: "admin" | "editor" | "guest";
-  status: "active" | "disabled";
-  createdAt: string;
-  lastActiveAt: string;
-}
-
-export interface MockProduct {
-  id: string;
-  name: string;
-  price: number;
-  category: string;
-  status: "active" | "draft" | "archived";
-}

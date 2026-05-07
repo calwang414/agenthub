@@ -1,8 +1,20 @@
-export async function apiGet<T>(url: string): Promise<T> {
-  const res = await fetch(url);
+async function handleResponse<T>(res: Response): Promise<T> {
+  if (!res.ok && res.status >= 500) {
+    throw new Error(`服务器错误 (${res.status})`);
+  }
+  const contentType = res.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
+    if (!res.ok) throw new Error(`请求失败 (${res.status})`);
+    return {} as T;
+  }
   const json = await res.json();
   if (!json.success) throw new Error(json.error || "请求失败");
   return json.data as T;
+}
+
+export async function apiGet<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  return handleResponse<T>(res);
 }
 
 export async function apiPost<T>(url: string, body: unknown): Promise<T> {
@@ -11,9 +23,7 @@ export async function apiPost<T>(url: string, body: unknown): Promise<T> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error || "请求失败");
-  return json.data as T;
+  return handleResponse<T>(res);
 }
 
 export async function apiPut<T>(url: string, body: unknown): Promise<T> {
@@ -22,15 +32,12 @@ export async function apiPut<T>(url: string, body: unknown): Promise<T> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error || "请求失败");
-  return json.data as T;
+  return handleResponse<T>(res);
 }
 
 export async function apiDelete(url: string): Promise<void> {
   const res = await fetch(url, { method: "DELETE" });
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error || "请求失败");
+  await handleResponse<void>(res);
 }
 
 export async function apiUpload<T>(url: string, formData: FormData): Promise<T> {
@@ -38,7 +45,5 @@ export async function apiUpload<T>(url: string, formData: FormData): Promise<T> 
     method: "POST",
     body: formData,
   });
-  const json = await res.json();
-  if (!json.success) throw new Error(json.error || "上传失败");
-  return json.data as T;
+  return handleResponse<T>(res);
 }

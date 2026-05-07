@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 export const metadata: Metadata = {
   title: "cal前端设计系统",
@@ -20,7 +21,9 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet" />
       </head>
       <body className="antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </AuthProvider>
       </body>
     </html>
   );

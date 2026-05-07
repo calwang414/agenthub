@@ -503,16 +503,25 @@ export default function AdminPluginsPage() {
     return paths;
   }
 
-  async function deleteStorageFiles(tasks: string[]) {
-    const supabase = createClient();
-    const results = await Promise.allSettled(
-      tasks.map((p) => supabase.storage.from("agenthub").remove([p]))
-    );
-    results.forEach((r, i) => {
-      if (r.status === "fulfilled" && r.value.error) {
-        console.error(`删除 Storage 文件失败: ${tasks[i]}`, r.value.error.message);
+  async function deleteStorageFiles(paths: string[]) {
+    if (paths.length === 0) return;
+    try {
+      const res = await fetch("/api/storage/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paths }),
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        const { deleted, failed } = json.data as { deleted: number; failed: number };
+        if (failed > 0) {
+          addToast(`${failed} 个文件删除失败`, "error");
+        }
       }
-    });
+    } catch (e) {
+      console.error("Storage 删除请求失败:", e);
+      addToast("Storage 文件清理失败", "error");
+    }
   }
 
   const handleSave = async () => {
@@ -571,7 +580,7 @@ export default function AdminPluginsPage() {
         }
 
         if (storageToDelete.length > 0) {
-          deleteStorageFiles(storageToDelete);
+          await deleteStorageFiles(storageToDelete);
         }
 
         await apiPut(`/api/plugins/${editingPlugin.id}`, updatePayload);

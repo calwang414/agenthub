@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import type { Announcement } from "@/lib/mock/notifications";
+import type { Announcement } from "@/lib/types";
 
 interface Props {
   announcements: Announcement[];

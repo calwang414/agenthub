@@ -25,10 +25,6 @@ export async function POST(
       return jsonResponse(error("该插件无可下载的安装包"), 404);
     }
 
-    const { data: publicUrlData } = supabase.storage
-      .from("agenthub")
-      .getPublicUrl(packageFile);
-
     const currentDownloads: number = (plugin as Record<string, unknown>).downloads as number || 0;
     const newDownloads = currentDownloads + 1;
 
@@ -42,7 +38,7 @@ export async function POST(
     }
 
     return jsonResponse(success({
-      downloadUrl: publicUrlData.publicUrl,
+      downloadUrl: `/api/plugins/${id}/download`,
       newCount: newDownloads,
     }));
   } catch (e) {

@@ -8,40 +8,25 @@ import NavLayout from "@/components/ui/nav-layout";
 import AnnouncementHero from "@/components/announcement-hero";
 
 interface CategoryItem {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-  pluginCount: number;
-  sortOrder: number;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
+type CategoryFilter = "全部" | "Skill" | "Agent" | "Tool" | "MCP" | "Plugin";
 
-const CATEGORY_COLOR_PALETTE = [
-  "bg-[#5db8a6]/12 text-[#5db8a6]",
-  "bg-[#cc785c]/12 text-[#cc785c]",
-  "bg-[#e8a55a]/12 text-[#d4a017]",
-  "bg-[#8e8b82]/12 text-[#6c6a64]",
-  "bg-[#252523]/12 text-[#252523]",
-  "bg-[#5db872]/12 text-[#5db872]",
-  "bg-[#7b6fde]/12 text-[#7b6fde]",
-  "bg-[#de6f9c]/12 text-[#de6f9c]",
-  "bg-[#3b82f6]/12 text-[#3b82f6]",
-  "bg-[#06b6d4]/12 text-[#06b6d4]",
-  "bg-[#84cc16]/12 text-[#84cc16]",
-  "bg-[#f97316]/12 text-[#f97316]",
-];
+const CATEGORY_OPTIONS: CategoryFilter[] = ["全部", "Skill", "Agent", "Tool", "MCP", "Plugin"];
 
-function getCategoryColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return CATEGORY_COLOR_PALETTE[Math.abs(hash) % CATEGORY_COLOR_PALETTE.length];
-}
+const CATEGORY_COLORS: Record<string, string> = {
+  Skill: "bg-[#5db8a6]/12 text-[#5db8a6]",
+  Agent: "bg-[#cc785c]/12 text-[#cc785c]",
+  Tool: "bg-[#e8a55a]/12 text-[#d4a017]",
+  MCP: "bg-[#8e8b82]/12 text-[#6c6a64]",
+  Plugin: "bg-[#252523]/12 text-[#252523]",
+};
 
+const CATEGORY_ICONS: Record<string, string> = {
+  Skill: "🧩",
+  Agent: "🤖",
+  Tool: "🛠️",
+  MCP: "🔗",
+  Plugin: "📦",
+};
 function formatDownloads(n: number): string {
   if (n >= 10000) return (n / 10000).toFixed(1) + "w";
   if (n >= 1000) return (n / 1000).toFixed(1) + "k";
@@ -66,7 +51,7 @@ function renderStars(rating: number) {
 export default function MarketplacePage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("全部");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("全部");
   const [toasts, setToasts] = useState<{ id: number; message: string }[]>([]);
   const toastIdRef = useRef(0);
   const heroRef = useRef<HTMLDivElement>(null);
@@ -75,13 +60,11 @@ export default function MarketplacePage() {
   const [allCollections, setAllCollections] = useState<{ id: string; title: string; description: string; pluginIds: string[] }[]>([]);
   const [allAnnouncements, setAllAnnouncements] = useState<Announcement[]>([]);
   const [allCategories, setAllCategories] = useState<CategoryItem[]>([]);
-
   useEffect(() => {
     apiGet<Plugin[]>("/api/plugins").then(setAllPlugins).catch(() => {});
     apiGet<{ id: string; title: string; description: string; pluginIds: string[] }[]>("/api/featured-collections").then(setAllCollections).catch(() => {});
     apiGet<Announcement[]>("/api/announcements").then(setAllAnnouncements).catch(() => {});
     apiGet<CategoryItem[]>("/api/categories").then(setAllCategories).catch(() => {});
-  }, []);
 
   const addToast = useCallback((message: string) => {
     const id = ++toastIdRef.current;
@@ -92,20 +75,8 @@ export default function MarketplacePage() {
   }, []);
 
   const categoryIcons = useMemo(() => {
-    const map: Record<string, string> = {};
-    allCategories.forEach((c) => { map[c.name] = c.icon; });
-    return map;
-  }, [allCategories]);
-
-  const categoryColors = useMemo(() => {
-    const map: Record<string, string> = {};
-    allCategories.forEach((c) => { map[c.name] = getCategoryColor(c.name); });
-    return map;
-  }, [allCategories]);
-
-  const publishedPlugins = useMemo(
     () => allPlugins.filter((p) => p.status === "published"),
-    [allPlugins]
+    () => allPlugins,
   );
 
   const topDownloads = useMemo(
@@ -118,8 +89,8 @@ export default function MarketplacePage() {
     return allCollections.map((col) => ({
       ...col,
       plugins: (col.pluginIds || [])
-        .map((id: string) => publishedPlugins.find((p) => p.id === id))
-        .filter(Boolean) as Plugin[],
+      plugins: col.pluginIds
+        .map((id) => publishedPlugins.find((p) => p.id === id))
     }));
   }, [publishedPlugins, allCollections]);
 
@@ -309,7 +280,7 @@ export default function MarketplacePage() {
       <section className="bg-[#faf9f5] border-b border-[#ebe6df]" style={{ padding: "0 32px" }}>
         <div className="max-w-[1200px] mx-auto flex items-center justify-center gap-5 overflow-x-auto pb-2">
           {["全部", ...allCategories.map((c) => c.name)].map((cat) => (
-            <button
+          {CATEGORY_OPTIONS.map((cat) => (
               key={cat}
               onClick={() => setCategoryFilter(cat)}
               className={`px-5 py-2.5 rounded-lg transition-colors whitespace-nowrap flex-shrink-0 ${
@@ -320,7 +291,7 @@ export default function MarketplacePage() {
               style={{ fontFamily: "Inter, sans-serif", fontSize: "28px", fontWeight: 500 }}
             >
               {cat === "全部" ? "全部" : `${categoryIcons[cat] || ""} ${cat}`}
-            </button>
+              {cat === "全部" ? "全部" : `${CATEGORY_ICONS[cat] || ""} ${cat}`}
           ))}
         </div>
       </section>
@@ -353,7 +324,7 @@ export default function MarketplacePage() {
                 <div className="flex items-start gap-4 mb-4">
                   <div className="w-12 h-12 rounded-xl bg-[#faf9f5] flex items-center justify-center text-2xl border border-[#e6dfd8] flex-shrink-0">
                     {categoryIcons[plugin.category] || "📦"}
-                  </div>
+                    {CATEGORY_ICONS[plugin.category] || "📦"}
                   <div className="min-w-0">
                     <h3
                       className="text-[#141413] mb-1"
@@ -363,7 +334,7 @@ export default function MarketplacePage() {
                     </h3>
                     <span
                       className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${categoryColors[plugin.category]}`}
-                    >
+                      className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${CATEGORY_COLORS[plugin.category]}`}
                       {plugin.category}
                     </span>
                   </div>
@@ -461,7 +432,7 @@ export default function MarketplacePage() {
                     </div>
                     <div className="w-8 h-8 rounded-lg bg-[#efe9de] flex items-center justify-center text-base flex-shrink-0">
                       {categoryIcons[plugin.category] || "📦"}
-                    </div>
+                      {CATEGORY_ICONS[plugin.category] || "📦"}
                     <div className="flex-1 min-w-0">
                       <div
                         className="text-[#141413] text-xs font-medium truncate"
@@ -525,7 +496,7 @@ export default function MarketplacePage() {
                           <div className="flex items-center gap-2 mb-2">
                             <div className="w-7 h-7 rounded-md bg-[#faf9f5] flex items-center justify-center text-sm border border-[#e6dfd8] flex-shrink-0">
                               {categoryIcons[plugin.category] || "📦"}
-                            </div>
+                              {CATEGORY_ICONS[plugin.category] || "📦"}
                             <div className="min-w-0">
                               <div
                                 className="text-[#141413] text-xs font-medium truncate"
@@ -535,7 +506,7 @@ export default function MarketplacePage() {
                               </div>
                               <span
                                 className={`inline-block px-1.5 py-0.5 rounded-full text-xs font-medium mt-0.5 ${categoryColors[plugin.category]}`}
-                                style={{ fontSize: "10px" }}
+                                className={`inline-block px-1.5 py-0.5 rounded-full text-xs font-medium mt-0.5 ${CATEGORY_COLORS[plugin.category]}`}
                               >
                                 {plugin.category}
                               </span>

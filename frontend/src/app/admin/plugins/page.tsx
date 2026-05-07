@@ -58,6 +58,7 @@ export default function AdminPluginsPage() {
   const [editingPlugin, setEditingPlugin] = useState<Plugin | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Plugin | null>(null);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [toasts, setToasts] = useState<{ id: number; message: string; type: "success" | "error" }[]>([]);
   const [packageFile, setPackageFile] = useState<File | null>(null);
   const [existingPackagePath, setExistingPackagePath] = useState<string>("");
@@ -531,7 +532,7 @@ export default function AdminPluginsPage() {
   }
 
   const handleSave = async () => {
-    if (saving) return;
+    if (savingRef.current) return;
     if (!formData.name.trim()) {
       addToast("插件名称不能为空", "error");
       return;
@@ -543,6 +544,7 @@ export default function AdminPluginsPage() {
     const tags = formData.tags;
     const hasFiles = !!(packageFile || coverImageFiles.length > 0);
 
+    savingRef.current = true;
     setSaving(true);
     addToast(editingPlugin ? "正在保存修改…" : "正在创建插件…");
 
@@ -655,10 +657,12 @@ export default function AdminPluginsPage() {
       fetchPlugins();
     } catch (e) {
       addToast(`保存失败: ${String(e)}`, "error");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+      setShowModal(false);
+      setEditingPlugin(null);
     }
-    setSaving(false);
-    setShowModal(false);
-    setEditingPlugin(null);
   };
 
   useEffect(() => {

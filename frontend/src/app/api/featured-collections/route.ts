@@ -1,5 +1,6 @@
+import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { success, error, jsonResponse, toCamelCaseArray } from "@/lib/api-helper";
+import { success, error, jsonResponse } from "@/lib/api-helper";
 
 export async function GET() {
   try {
@@ -9,7 +10,7 @@ export async function GET() {
       .select("*");
 
     if (err) return jsonResponse(error(err.message), 500);
-    return jsonResponse(success(toCamelCaseArray(data as Record<string, unknown>[])));
+    return jsonResponse(success(data));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }

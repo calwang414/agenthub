@@ -12,6 +12,8 @@ export async function POST(request: Request) {
     const author = (formData.get("author") as string) || "";
     const category = (formData.get("category") as string) || "Skill";
     const status = (formData.get("status") as string) || "draft";
+    const readme = (formData.get("readme") as string) || "";
+    const changelog = (formData.get("changelog") as string) || "";
 
     const tags: string[] = [];
     formData.forEach((val, key) => {
@@ -34,6 +36,8 @@ export async function POST(request: Request) {
         category,
         status,
         tags,
+        readme: readme.trim(),
+        changelog: changelog.trim(),
       })
       .select()
       .single();

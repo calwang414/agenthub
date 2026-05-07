@@ -6,7 +6,7 @@ export async function GET() {
     const supabase = await createServerSupabase();
     const { data, error: err } = await supabase
       .from("agenthub_plugins")
-      .select("*")
+      .select("id, name, description, version, author, category, downloads, rating, status, tags, icon, package_file, cover_images, created_at, updated_at")
       .order("created_at", { ascending: false });
 
     if (err) return jsonResponse(error(err.message), 500);
@@ -34,6 +34,8 @@ export async function POST(request: Request) {
         status: body.status || "draft",
         tags: body.tags || [],
         icon: body.icon || "",
+        readme: body.readme || "",
+        changelog: body.changelog || "",
       })
       .select()
       .single();

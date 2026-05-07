@@ -868,6 +868,19 @@ export default function AdminPluginsPage() {
                               <div className="text-[#8e8b82] text-xs truncate max-w-[200px] hidden sm:block">
                                 {plugin.description.slice(0, 40)}…
                               </div>
+                              {pluginCollectionsMap[plugin.id] && pluginCollectionsMap[plugin.id].length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {pluginCollectionsMap[plugin.id].map((col) => (
+                                    <span
+                                      key={col.id}
+                                      className="inline-block px-1.5 py-0.5 bg-[#cc785c]/10 text-[#cc785c] rounded text-[10px] truncate max-w-[120px]"
+                                      title={col.title}
+                                    >
+                                      {col.title}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -911,6 +924,20 @@ export default function AdminPluginsPage() {
                             >
                               删除
                             </button>
+                            <button
+                              onClick={() => openCollectionModal(plugin)}
+                              className="px-2 py-1.5 text-[#cc785c] hover:text-[#cc785c] hover:bg-[#cc785c]/8 rounded-md transition-colors text-xs"
+                            >
+                              加入精选
+                            </button>
+                            {pluginCollectionsMap[plugin.id] && pluginCollectionsMap[plugin.id].length > 0 && (
+                              <button
+                                onClick={() => openRemoveCollectionModal(plugin)}
+                                className="px-2 py-1.5 text-[#8e8b82] hover:text-[#c64545] hover:bg-[#c64545]/8 rounded-md transition-colors text-xs"
+                              >
+                                取消精选
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

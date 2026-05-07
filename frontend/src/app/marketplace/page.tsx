@@ -128,12 +128,18 @@ export default function MarketplacePage() {
     let result = publishedPlugins;
 
     if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.author.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q)
+      const keywords = search
+        .split(/[ ,,，;；\s]+/)
+        .map((k) => k.toLowerCase().trim())
+        .filter(Boolean);
+      result = result.filter((p) =>
+        keywords.some(
+          (kw) =>
+            p.name.toLowerCase().includes(kw) ||
+            p.author.toLowerCase().includes(kw) ||
+            p.description.toLowerCase().includes(kw) ||
+            p.tags.some((tag) => tag.toLowerCase().includes(kw))
+        )
       );
     }
 
@@ -248,7 +254,7 @@ export default function MarketplacePage() {
                     </svg>
                     <input
                       type="text"
-                      placeholder="搜索 Skill、Agent、MCP…"
+                      placeholder="搜索名称、作者、描述、标签…"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="flex-1 border-none px-3 py-3 text-sm text-[#141413] placeholder-[#8e8b82] outline-none bg-transparent"

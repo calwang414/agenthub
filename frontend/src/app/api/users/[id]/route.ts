@@ -44,6 +44,7 @@ export async function PUT(
     if (body.name !== undefined) updates.name = body.name;
     if (body.nickname !== undefined) updates.nickname = body.nickname;
     if (body.phone !== undefined) updates.phone = body.phone;
+    if (body.email !== undefined) updates.email = body.email;
     if (body.role !== undefined) updates.role = body.role;
     if (body.status !== undefined) updates.status = body.status;
     updates.last_active_at = new Date().toISOString();

@@ -84,7 +84,7 @@ export default function AdminPluginsPage() {
     description: "",
     version: "1.0.0",
     author: "",
-    category: "Skill" as Plugin["category"],
+    category: "Skill",
     tags: [] as string[],
   });
 
@@ -1132,15 +1132,15 @@ export default function AdminPluginsPage() {
                 <label className="block text-sm text-[#3d3d3a] mb-1.5">分类</label>
                 <select
                   value={formData.category}
-                  onChange={(e) => setFormData((f) => ({ ...f, category: e.target.value as Plugin["category"] }))}
+                  onChange={(e) => setFormData((f) => ({ ...f, category: e.target.value }))}
                   className="w-full px-3 py-2.5 bg-[#faf9f5] border border-[#e6dfd8] rounded-lg text-sm text-[#141413] focus:outline-none focus:border-[#cc785c] cursor-pointer appearance-none pr-8 bg-no-repeat"
                   style={{
                     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236c6a64' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
                     backgroundPosition: "right 12px center",
                   }}
                 >
-                  {(["Skill", "Agent", "Tool", "MCP", "Plugin"] as const).map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                  {allCategories.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
                   ))}
                 </select>
               </div>

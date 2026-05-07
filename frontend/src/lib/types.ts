@@ -4,7 +4,7 @@ export interface Plugin {
   description: string;
   version: string;
   author: string;
-  category: "Skill" | "Agent" | "Tool" | "MCP" | "Plugin";
+  category: string;
   downloads: number;
   rating: number;
   status: "published" | "draft" | "reviewing";

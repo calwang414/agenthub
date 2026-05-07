@@ -72,6 +72,8 @@ export default function AdminPluginsPage() {
   const coverImageInputRef = useRef<HTMLInputElement>(null);
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [iconPreview, setIconPreview] = useState<string>("");
+  const [existingIconPath, setExistingIconPath] = useState<string>("");
+  const [iconRemoved, setIconRemoved] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
 
   const storageBaseUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/agenthub`;
@@ -276,6 +278,8 @@ export default function AdminPluginsPage() {
     setCoverImagePreviews([]);
     setIconFile(null);
     setIconPreview("");
+    setExistingIconPath("");
+    setIconRemoved(false);
     apiGet<Tag[]>("/api/tags").then((data) => setTagLibrary(data.filter((t) => t.status === "enabled"))).catch(() => {});
     setShowModal(true);
   };
@@ -302,6 +306,8 @@ export default function AdminPluginsPage() {
     setCoverImagePreviews(existingPreviews);
     setIconFile(null);
     setIconPreview(plugin.icon ? `${storageBaseUrl}/${plugin.icon}` : "");
+    setExistingIconPath(plugin.icon || "");
+    setIconRemoved(false);
     apiGet<Tag[]>("/api/tags").then((data) => setTagLibrary(data.filter((t) => t.status === "enabled"))).catch(() => {});
     setShowModal(true);
   };
@@ -585,9 +591,17 @@ export default function AdminPluginsPage() {
 
         await apiPut(`/api/plugins/${editingPlugin.id}`, updatePayload);
 
-        const iconPath = await uploadPluginIcon(editingPlugin.id);
-        if (iconPath) {
-          await apiPut(`/api/plugins/${editingPlugin.id}`, { icon: iconPath });
+        if (iconFile) {
+          const iconPath = await uploadPluginIcon(editingPlugin.id);
+          if (iconPath) {
+            await apiPut(`/api/plugins/${editingPlugin.id}`, { icon: iconPath });
+            if (existingIconPath) {
+              deleteStorageFiles([existingIconPath]);
+            }
+          }
+        } else if (iconRemoved && existingIconPath) {
+          await apiPut(`/api/plugins/${editingPlugin.id}`, { icon: "" });
+          deleteStorageFiles([existingIconPath]);
         }
 
         addToast(`插件「${formData.name.trim()}」已更新`, "success");
@@ -1128,20 +1142,46 @@ export default function AdminPluginsPage() {
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">插件图标</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setIconFile(file);
-                      setIconPreview(URL.createObjectURL(file));
-                    }
-                  }}
-                  className="w-full text-sm border rounded px-3 py-2"
-                />
-                {iconPreview && (
-                  <img src={iconPreview} alt="图标预览" className="w-16 h-16 mt-2 rounded object-cover" />
+                {iconFile ? (
+                  <div className="flex items-center gap-3">
+                    <img src={iconPreview} alt="图标预览" className="w-12 h-12 rounded object-cover border border-[#e6dfd8]" />
+                    <button
+                      type="button"
+                      onClick={() => { setIconFile(null); setIconPreview(""); }}
+                      className="text-xs text-[#c64545] hover:underline"
+                    >移除新图标</button>
+                  </div>
+                ) : editingPlugin && existingIconPath && !iconRemoved ? (
+                  <div className="flex items-center gap-3">
+                    <img src={`${storageBaseUrl}/${existingIconPath}`} alt="当前图标" className="w-12 h-12 rounded object-cover border border-[#e6dfd8]" />
+                    <button
+                      type="button"
+                      onClick={() => { setIconRemoved(true); setIconPreview(""); }}
+                      className="text-xs text-[#c64545] hover:underline"
+                    >删除图标</button>
+                  </div>
+                ) : null}
+                {!iconFile && !(editingPlugin && existingIconPath && !iconRemoved) && (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setIconFile(file);
+                        setIconPreview(URL.createObjectURL(file));
+                        setIconRemoved(false);
+                      }
+                    }}
+                    className="w-full text-sm border rounded px-3 py-2"
+                  />
+                )}
+                {iconRemoved && (
+                  <button
+                    type="button"
+                    onClick={() => { setIconRemoved(false); setIconPreview(`${storageBaseUrl}/${existingIconPath}`); }}
+                    className="text-xs text-[#cc785c] hover:underline mt-1"
+                  >撤销删除</button>
                 )}
               </div>
               <div>

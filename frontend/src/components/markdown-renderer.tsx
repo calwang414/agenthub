@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import "cherry-markdown/dist/cherry-markdown.markdown.min.css";
 
 interface MarkdownRendererProps {
   content: string;
@@ -34,7 +35,7 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
 
   return (
     <div
-      className={`markdown-body ${className || ""}`}
+      className={`cherry-markdown ${className || ""}`}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

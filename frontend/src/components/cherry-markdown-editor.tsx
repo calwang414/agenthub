@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
+import type Cherry from "cherry-markdown";
+import "cherry-markdown/dist/cherry-markdown.min.css";
 
 interface CherryMarkdownEditorProps {
   value: string;
@@ -16,18 +18,17 @@ export default function CherryMarkdownEditor({
   height = "400px",
 }: CherryMarkdownEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const cherryRef = useRef<any>(null);
+  const cherryRef = useRef<Cherry | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
   const initCherry = useCallback(async () => {
     if (!containerRef.current) return;
 
-    const Cherry = (await import("cherry-markdown")).default;
+    const CherryClass = (await import("cherry-markdown")).default;
 
     const cherryOptions: Record<string, unknown> = {
       el: containerRef.current,
-      value: value || "",
       editor: {
         defaultModel: "editOnly",
         height: height,
@@ -40,6 +41,8 @@ export default function CherryMarkdownEditor({
           "strikethrough",
           "|",
           "header",
+          "|",
+          "quote",
           "|",
           "ol",
           "ul",
@@ -70,8 +73,8 @@ export default function CherryMarkdownEditor({
       },
     };
 
-    cherryRef.current = new Cherry(cherryOptions as any);
-  }, [value, height, placeholder]);
+    cherryRef.current = new CherryClass(cherryOptions as any);
+  }, [height, placeholder]);
 
   useEffect(() => {
     initCherry();

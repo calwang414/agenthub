@@ -978,6 +978,18 @@ export default function AdminPluginsPage() {
                   </div>
                   <h3 className="text-[#141413] text-base font-medium mb-1">{plugin.name}</h3>
                   <p className="text-[#8e8b82] text-sm mb-3 line-clamp-2">{plugin.description}</p>
+                  {pluginCollectionsMap[plugin.id] && pluginCollectionsMap[plugin.id].length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {pluginCollectionsMap[plugin.id].map((col) => (
+                        <span
+                          key={col.id}
+                          className="inline-block px-1.5 py-0.5 bg-[#cc785c]/10 text-[#cc785c] rounded text-[10px]"
+                        >
+                          {col.title}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex items-center justify-between text-xs text-[#6c6a64] mb-3">
                     <span>{plugin.author}</span>
                     <span>v{plugin.version}</span>
@@ -1010,6 +1022,20 @@ export default function AdminPluginsPage() {
                     <button onClick={() => setShowDeleteConfirm(plugin)} className="flex-1 py-1.5 text-xs text-[#8e8b82] hover:text-[#c64545] hover:bg-[#c64545]/8 rounded-md transition-colors">
                       删除
                     </button>
+                    <button
+                      onClick={() => openCollectionModal(plugin)}
+                      className="flex-1 py-1.5 text-xs text-[#cc785c] hover:bg-[#cc785c]/8 rounded-md transition-colors"
+                    >
+                      加入精选
+                    </button>
+                    {pluginCollectionsMap[plugin.id] && pluginCollectionsMap[plugin.id].length > 0 && (
+                      <button
+                        onClick={() => openRemoveCollectionModal(plugin)}
+                        className="flex-1 py-1.5 text-xs text-[#8e8b82] hover:text-[#c64545] hover:bg-[#c64545]/8 rounded-md transition-colors"
+                      >
+                        取消精选
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

@@ -1,8 +1,20 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { categories as initialCategories, type Category } from "@/lib/mock/categories";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import AdminLayout from "@/components/ui/admin-layout";
+
+interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  pluginCount: number;
+  sortOrder: number;
+  status: "enabled" | "disabled";
+  createdAt: string;
+  updatedAt: string;
+}
 
 type ViewMode = "table" | "card";
 type StatusFilter = "全部" | "enabled" | "disabled";
@@ -25,7 +37,8 @@ export default function AdminCategoriesPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("全部");
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [currentPage, setCurrentPage] = useState(1);
-  const [categoryList, setCategoryList] = useState<Category[]>(initialCategories);
+  const [categoryList, setCategoryList] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Category | null>(null);
@@ -49,6 +62,30 @@ export default function AdminCategoriesPage() {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3000);
   }, []);
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toISOString().slice(0, 10);
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await apiGet<Category[]>("/api/categories");
+      setCategoryList(data);
+    } catch (e) {
+      addToast("获取分类列表失败: " + String(e), "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [addToast]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -95,49 +132,52 @@ export default function AdminCategoriesPage() {
   }, [searchDebounced, statusFilter]);
 
   const handleMoveUp = useCallback(
-    (category: Category, index: number) => {
+    async (category: Category, index: number) => {
       if (index === 0) return;
-      setCategoryList((prev) => {
-        const sorted = [...prev].sort((a, b) => a.sortOrder - b.sortOrder);
+      try {
+        const sorted = [...categoryList].sort((a, b) => a.sortOrder - b.sortOrder);
         const idx = sorted.findIndex((c) => c.id === category.id);
-        if (idx <= 0) return prev;
-        const newList = [...prev];
-        const currentItem = newList.find((c) => c.id === category.id)!;
-        const prevItem = newList.find((c) => c.id === sorted[idx - 1].id)!;
-        const tmpOrder = currentItem.sortOrder;
-        currentItem.sortOrder = prevItem.sortOrder;
-        prevItem.sortOrder = tmpOrder;
-        return [...newList];
-      });
+        if (idx <= 0) return;
+        const prevItem = sorted[idx - 1];
+        await apiPut(`/api/categories/${category.id}`, { sortOrder: prevItem.sortOrder });
+        await apiPut(`/api/categories/${prevItem.id}`, { sortOrder: category.sortOrder });
+        fetchCategories();
+      } catch (e) {
+        addToast("排序失败: " + String(e), "error");
+      }
     },
-    []
+    [categoryList, addToast, fetchCategories]
   );
 
   const handleMoveDown = useCallback(
-    (category: Category, index: number) => {
-      setCategoryList((prev) => {
-        const sorted = [...prev].sort((a, b) => a.sortOrder - b.sortOrder);
+    async (category: Category, index: number) => {
+      try {
+        const sorted = [...categoryList].sort((a, b) => a.sortOrder - b.sortOrder);
         const idx = sorted.findIndex((c) => c.id === category.id);
-        if (idx < 0 || idx >= sorted.length - 1) return prev;
-        const newList = [...prev];
-        const currentItem = newList.find((c) => c.id === category.id)!;
-        const nextItem = newList.find((c) => c.id === sorted[idx + 1].id)!;
-        const tmpOrder = currentItem.sortOrder;
-        currentItem.sortOrder = nextItem.sortOrder;
-        nextItem.sortOrder = tmpOrder;
-        return [...newList];
-      });
+        if (idx < 0 || idx >= sorted.length - 1) return;
+        const nextItem = sorted[idx + 1];
+        await apiPut(`/api/categories/${category.id}`, { sortOrder: nextItem.sortOrder });
+        await apiPut(`/api/categories/${nextItem.id}`, { sortOrder: category.sortOrder });
+        fetchCategories();
+      } catch (e) {
+        addToast("排序失败: " + String(e), "error");
+      }
     },
-    []
+    [categoryList, addToast, fetchCategories]
   );
 
   const handleDelete = useCallback(
-    (category: Category) => {
-      setCategoryList((prev) => prev.filter((c) => c.id !== category.id));
-      setShowDeleteConfirm(null);
-      addToast(`分类「${category.name}」已删除`, "success");
+    async (category: Category) => {
+      try {
+        await apiDelete(`/api/categories/${category.id}`);
+        setShowDeleteConfirm(null);
+        addToast(`分类「${category.name}」已删除`, "success");
+        fetchCategories();
+      } catch (e) {
+        addToast("删除失败: " + String(e), "error");
+      }
     },
-    [addToast]
+    [addToast, fetchCategories]
   );
 
   const openAddModal = () => {
@@ -157,7 +197,7 @@ export default function AdminCategoriesPage() {
     setShowModal(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name.trim()) {
       addToast("分类名称不能为空", "error");
       return;
@@ -172,38 +212,29 @@ export default function AdminCategoriesPage() {
       return;
     }
 
-    if (editingCategory) {
-      setCategoryList((prev) =>
-        prev.map((c) =>
-          c.id === editingCategory.id
-            ? {
-                ...c,
-                name: formData.name.trim(),
-                icon: formData.icon.trim(),
-                description: formData.description.trim(),
-                sortOrder,
-                updatedAt: new Date().toISOString().slice(0, 10),
-              }
-            : c
-        )
-      );
-      addToast(`分类「${formData.name.trim()}」已更新`, "success");
-    } else {
-      const newCategory: Category = {
-        id: String(Date.now()),
-        name: formData.name.trim(),
-        icon: formData.icon.trim(),
-        description: formData.description.trim(),
-        pluginCount: 0,
-        sortOrder,
-        status: "enabled",
-        createdAt: new Date().toISOString().slice(0, 10),
-        updatedAt: new Date().toISOString().slice(0, 10),
-      };
-      setCategoryList((prev) => [...prev, newCategory]);
-      addToast(`分类「${formData.name.trim()}」已创建`, "success");
+    try {
+      if (editingCategory) {
+        await apiPut<Category>(`/api/categories/${editingCategory.id}`, {
+          name: formData.name.trim(),
+          icon: formData.icon.trim(),
+          description: formData.description.trim(),
+          sortOrder,
+        });
+        addToast(`分类「${formData.name.trim()}」已更新`, "success");
+      } else {
+        await apiPost<Category>("/api/categories", {
+          name: formData.name.trim(),
+          icon: formData.icon.trim(),
+          description: formData.description.trim(),
+          sortOrder,
+        });
+        addToast(`分类「${formData.name.trim()}」已创建`, "success");
+      }
+      setShowModal(false);
+      fetchCategories();
+    } catch (e) {
+      addToast("操作失败: " + String(e), "error");
     }
-    setShowModal(false);
   };
 
   useEffect(() => {
@@ -311,7 +342,13 @@ export default function AdminCategoriesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pagedCategories.map((category) => {
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-12 text-center text-[#8e8b82] text-sm">
+                          加载中…
+                        </td>
+                      </tr>
+                    ) : pagedCategories.map((category) => {
                       const sortedIdx = sortedCategories.findIndex((c) => c.id === category.id);
                       return (
                         <tr
@@ -336,7 +373,7 @@ export default function AdminCategoriesPage() {
                               {category.pluginCount}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-[#6c6a64] text-sm hidden lg:table-cell">{category.createdAt}</td>
+                          <td className="px-4 py-3 text-[#6c6a64] text-sm hidden lg:table-cell">{formatDate(category.createdAt)}</td>
                           <td className="px-4 py-3">
                             <div className="flex flex-col items-center gap-0.5">
                               <button
@@ -388,7 +425,7 @@ export default function AdminCategoriesPage() {
                         </tr>
                       );
                     })}
-                    {pagedCategories.length === 0 && (
+                    {!isLoading && pagedCategories.length === 0 && (
                       <tr>
                         <td colSpan={8} className="px-4 py-12 text-center text-[#8e8b82] text-sm">
                           没有找到匹配的分类
@@ -404,7 +441,11 @@ export default function AdminCategoriesPage() {
           {/* Card View */}
           {viewMode === "card" && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-              {pagedCategories.map((category) => {
+              {isLoading ? (
+                <div className="col-span-full py-12 text-center text-[#8e8b82] text-sm">
+                  加载中…
+                </div>
+              ) : pagedCategories.map((category) => {
                 const sortedIdx = sortedCategories.findIndex((c) => c.id === category.id);
                 return (
                   <div
@@ -432,7 +473,7 @@ export default function AdminCategoriesPage() {
                       <span>排序: {category.sortOrder}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-[#6c6a64] mb-3">
-                      <span>{category.createdAt}</span>
+                      <span>{formatDate(category.createdAt)}</span>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleMoveUp(category, sortedIdx)}
@@ -473,7 +514,7 @@ export default function AdminCategoriesPage() {
                   </div>
                 );
               })}
-              {pagedCategories.length === 0 && (
+              {!isLoading && pagedCategories.length === 0 && (
                 <div className="col-span-full py-12 text-center text-[#8e8b82] text-sm">
                   没有找到匹配的分类
                 </div>

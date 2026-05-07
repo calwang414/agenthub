@@ -8,10 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 import AdminLayout from "@/components/ui/admin-layout";
 
 type ViewMode = "table" | "card";
-type CategoryFilter = "全部" | "Skill" | "Agent" | "Tool" | "MCP" | "Plugin";
 type StatusFilter = "全部" | "published" | "draft" | "reviewing";
 
-const CATEGORY_OPTIONS: CategoryFilter[] = ["全部", "Skill", "Agent", "Tool", "MCP", "Plugin"];
 const STATUS_OPTIONS: { label: string; value: StatusFilter }[] = [
   { label: "全部", value: "全部" },
   { label: "已上架", value: "published" },
@@ -23,14 +21,6 @@ const STATUS_MAP: Record<Plugin["status"], { label: string; className: string }>
   published: { label: "已上架", className: "bg-[#5db872]/12 text-[#5db872]" },
   draft: { label: "已下架", className: "bg-[#8e8b82]/12 text-[#8e8b82]" },
   reviewing: { label: "待审核", className: "bg-[#e8a55a]/12 text-[#d4a017]" },
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  Skill: "bg-[#5db8a6]/12 text-[#5db8a6]",
-  Agent: "bg-[#cc785c]/12 text-[#cc785c]",
-  Tool: "bg-[#e8a55a]/12 text-[#d4a017]",
-  MCP: "bg-[#8e8b82]/12 text-[#6c6a64]",
-  Plugin: "bg-[#252523]/12 text-[#252523]",
 };
 
 const ITEMS_PER_PAGE = 6;
@@ -58,11 +48,12 @@ function renderStars(rating: number) {
 
 export default function AdminPluginsPage() {
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("全部");
+  const [categoryFilter, setCategoryFilter] = useState("全部");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("全部");
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [currentPage, setCurrentPage] = useState(1);
   const [pluginList, setPluginList] = useState<Plugin[]>([]);
+  const [allCategories, setAllCategories] = useState<{ id: string; name: string; icon: string }[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showModal, setShowModal] = useState(false);
   const [editingPlugin, setEditingPlugin] = useState<Plugin | null>(null);
@@ -109,9 +100,37 @@ export default function AdminPluginsPage() {
     }
   }, [addToast]);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const data = await apiGet<{ id: string; name: string; icon: string }[]>("/api/categories");
+      setAllCategories(data);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     fetchPlugins();
-  }, [fetchPlugins]);
+    fetchCategories();
+  }, [fetchPlugins, fetchCategories]);
+
+  const categoryColors = useMemo(() => {
+    const palette = [
+      "bg-[#5db8a6]/12 text-[#5db8a6]",
+      "bg-[#cc785c]/12 text-[#cc785c]",
+      "bg-[#e8a55a]/12 text-[#d4a017]",
+      "bg-[#8e8b82]/12 text-[#6c6a64]",
+      "bg-[#252523]/12 text-[#252523]",
+      "bg-[#5db872]/12 text-[#5db872]",
+      "bg-[#7b6fde]/12 text-[#7b6fde]",
+      "bg-[#de6f9c]/12 text-[#de6f9c]",
+    ];
+    const map: Record<string, string> = {};
+    allCategories.forEach((c) => {
+      let hash = 0;
+      for (let i = 0; i < c.name.length; i++) hash = c.name.charCodeAt(i) + ((hash << 5) - hash);
+      map[c.name] = palette[Math.abs(hash) % palette.length];
+    });
+    return map;
+  }, [allCategories]);
 
   const filteredPlugins = useMemo(() => {
     let result = pluginList;
@@ -510,14 +529,14 @@ export default function AdminPluginsPage() {
 
             <select
               value={categoryFilter}
-              onChange={(e) => { setCategoryFilter(e.target.value as CategoryFilter); setCurrentPage(1); }}
+              onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
               className="px-4 py-2.5 bg-[#faf9f5] border border-[#e6dfd8] rounded-lg text-sm text-[#141413] focus:outline-none focus:border-[#cc785c] cursor-pointer appearance-none pr-8 bg-no-repeat"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236c6a64' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
                 backgroundPosition: "right 12px center",
               }}
             >
-              {CATEGORY_OPTIONS.map((c) => (
+              {(["全部", ...allCategories.map(c => c.name)]).map((c) => (
                 <option key={c} value={c}>{c === "全部" ? "全部分类" : c}</option>
               ))}
             </select>
@@ -642,7 +661,7 @@ export default function AdminPluginsPage() {
                         <td className="px-4 py-3 text-[#6c6a64] text-sm hidden md:table-cell">v{plugin.version}</td>
                         <td className="px-4 py-3 text-[#3d3d3a] text-sm hidden md:table-cell">{plugin.author}</td>
                         <td className="px-4 py-3 hidden lg:table-cell">
-                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${CATEGORY_COLORS[plugin.category]}`}>
+                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${categoryColors[plugin.category] || ""}`}>
                             {plugin.category}
                           </span>
                         </td>
@@ -712,7 +731,7 @@ export default function AdminPluginsPage() {
                       <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_MAP[plugin.status].className}`}>
                         {STATUS_MAP[plugin.status].label}
                       </span>
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORY_COLORS[plugin.category]}`}>
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${categoryColors[plugin.category] || ""}`}>
                         {plugin.category}
                       </span>
                     </div>

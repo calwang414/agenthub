@@ -1,12 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { success, error, jsonResponse, toCamelCase } from "@/lib/api-helper";
 
-function getExt(filename: string): string {
-  if (filename.endsWith(".tar.gz")) return "tar.gz";
-  const parts = filename.split(".");
-  return parts[parts.length - 1] || "bin";
-}
-
 export async function POST(request: Request) {
   try {
     const supabase = await createServerSupabase();
@@ -60,8 +54,7 @@ export async function POST(request: Request) {
     const uploadErrors: string[] = [];
 
     if (packageFile && packageFile.size > 0) {
-      const ext = getExt(packageFile.name);
-      const filePath = `packages/${pluginId}.${ext}`;
+      const filePath = `packages/${pluginId}/${packageFile.name}`;
 
       const { error: pkgErr } = await supabase.storage
         .from("agenthub")
@@ -78,8 +71,7 @@ export async function POST(request: Request) {
     if (coverFiles.length > 0) {
       for (let i = 0; i < coverFiles.length; i++) {
         const file = coverFiles[i];
-        const ext = file.name.split(".").pop() || "png";
-        const filePath = `covers/${pluginId}_${i}.${ext}`;
+        const filePath = `covers/${pluginId}/${file.name}`;
 
         const { error: coverErr } = await supabase.storage
           .from("agenthub")

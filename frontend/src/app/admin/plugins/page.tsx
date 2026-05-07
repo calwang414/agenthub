@@ -435,8 +435,7 @@ export default function AdminPluginsPage() {
     if (!iconFile) return null;
     try {
       const supabase = createClient();
-      const ext = iconFile.name.split(".").pop() || "png";
-      const filePath = `icons/${pluginId}.${ext}`;
+      const filePath = `icons/${pluginId}/${iconFile.name}`;
 
       const { error } = await supabase.storage
         .from("agenthub")
@@ -460,9 +459,7 @@ export default function AdminPluginsPage() {
     if (!packageFile) return null;
     try {
       const supabase = createClient();
-      const fileName = packageFile.name;
-      const ext = fileName.endsWith(".tar.gz") ? "tar.gz" : (fileName.split(".").pop() || "bin");
-      const filePath = `packages/${pluginId}.${ext}`;
+      const filePath = `packages/${pluginId}/${packageFile.name}`;
 
       const { error } = await supabase.storage
         .from("agenthub")
@@ -480,14 +477,13 @@ export default function AdminPluginsPage() {
     }
   }
 
-  async function uploadCoverImagesToStorage(pluginId: string, startIndex = 0): Promise<string[]> {
+  async function uploadCoverImagesToStorage(pluginId: string): Promise<string[]> {
     if (coverImageFiles.length === 0) return [];
     const supabase = createClient();
     const paths: string[] = [];
     for (let i = 0; i < coverImageFiles.length; i++) {
       const file = coverImageFiles[i];
-      const ext = file.name.split(".").pop() || "png";
-      const filePath = `covers/${pluginId}_${startIndex + i}.${ext}`;
+      const filePath = `covers/${pluginId}/${file.name}`;
       try {
         const { error } = await supabase.storage
           .from("agenthub")
@@ -577,13 +573,7 @@ export default function AdminPluginsPage() {
         }
 
         if (coverImageFiles.length > 0) {
-          const maxKeptIndex = keptExistingCovers.length > 0
-            ? Math.max(...keptExistingCovers.map((p) => {
-                const match = p.match(/_(\d+)\.\w+$/);
-                return match ? parseInt(match[1], 10) : -1;
-              })) + 1
-            : 0;
-          const newPaths = await uploadCoverImagesToStorage(editingPlugin.id, maxKeptIndex);
+          const newPaths = await uploadCoverImagesToStorage(editingPlugin.id);
           updatePayload.coverImages = [...keptExistingCovers, ...newPaths];
         } else if (removedCoverIndices.size > 0) {
           updatePayload.coverImages = keptExistingCovers;

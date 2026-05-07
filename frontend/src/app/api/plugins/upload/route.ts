@@ -1,5 +1,6 @@
 import { createServerSupabase } from "@/lib/supabase/server";
 import { success, error, jsonResponse, toCamelCase } from "@/lib/api-helper";
+import { validateRequired } from "@/lib/validations";
 
 export async function POST(request: Request) {
   try {
@@ -25,6 +26,9 @@ export async function POST(request: Request) {
     if (!name.trim()) {
       return jsonResponse(error("插件名称不能为空"), 400);
     }
+
+    const nameResult = validateRequired(name, 1, 100);
+    if (!nameResult.valid) return jsonResponse(error(`插件名称${nameResult.error}`), 400);
 
     const { data: plugin, error: insertErr } = await supabase
       .from("agenthub_plugins")

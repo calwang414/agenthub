@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { success, error, jsonResponse, toCamelCaseArray, toCamelCase } from "@/lib/api-helper";
+import { validateRequired, validateEmail, validateRole } from "@/lib/validations";
 
 export async function GET() {
   try {
@@ -25,6 +26,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const { name, email, phone, role, password } = body;
+
+    const nameResult = validateRequired(name);
+    if (!nameResult.valid) return jsonResponse(error(`用户名${nameResult.error}`), 400);
+
+    const emailResult = validateEmail(email);
+    if (!emailResult.valid) return jsonResponse(error(emailResult.error), 400);
+
+    if (password && password.length < 6) return jsonResponse(error("密码至少6位"), 400);
+
+    const roleVal = role || "guest";
+    const roleResult = validateRole(roleVal);
+    if (!roleResult.valid) return jsonResponse(error(roleResult.error), 400);
 
     if (!name || !email || !password) {
       return jsonResponse(error("用户名、邮箱和密码为必填项"), 400);

@@ -12,6 +12,10 @@ export interface Plugin {
   icon?: string;
   packageFile?: string;
   coverImages?: string[];
+  readme: string;
+  reviews: Review[];
+  versionHistory: VersionEntry[];
+  changelog: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -83,23 +87,6 @@ export interface VersionEntry {
   version: string;
   date: string;
   changelog: string[];
-}
-
-export interface DeveloperInfo {
-  name: string;
-  description: string;
-  website: string;
-}
-
-export interface PluginDetail {
-  pluginId: string;
-  readme: string;
-  installSteps: string[];
-  dependencies: string[];
-  reviews: Review[];
-  versionHistory: VersionEntry[];
-  developer: DeveloperInfo;
-  docs: { label: string; url: string }[];
 }
 
 export interface MockUser {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import Link from "next/link";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import AdminLayout from "@/components/ui/admin-layout";
 
@@ -127,6 +126,7 @@ export default function AdminUsersPage() {
   }, [addToast]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchUsers();
   }, [fetchUsers]);
 
@@ -154,6 +154,7 @@ export default function AdminUsersPage() {
   }, [filteredUsers, currentPage]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [totalPages, currentPage]);
 

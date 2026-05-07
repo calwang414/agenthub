@@ -57,6 +57,7 @@ export default function AdminPluginsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingPlugin, setEditingPlugin] = useState<Plugin | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Plugin | null>(null);
+  const [saving, setSaving] = useState(false);
   const [toasts, setToasts] = useState<{ id: number; message: string; type: "success" | "error" }[]>([]);
   const [packageFile, setPackageFile] = useState<File | null>(null);
   const [existingPackagePath, setExistingPackagePath] = useState<string>("");
@@ -528,6 +529,7 @@ export default function AdminPluginsPage() {
   }
 
   const handleSave = async () => {
+    if (saving) return;
     if (!formData.name.trim()) {
       addToast("插件名称不能为空", "error");
       return;
@@ -538,6 +540,9 @@ export default function AdminPluginsPage() {
     }
     const tags = formData.tags;
     const hasFiles = !!(packageFile || coverImageFiles.length > 0);
+
+    setSaving(true);
+    addToast(editingPlugin ? "正在保存修改…" : "正在创建插件…");
 
     try {
       if (editingPlugin) {
@@ -646,8 +651,8 @@ export default function AdminPluginsPage() {
       fetchPlugins();
     } catch (e) {
       addToast(`保存失败: ${String(e)}`, "error");
-      return;
     }
+    setSaving(false);
     setShowModal(false);
     setEditingPlugin(null);
   };
@@ -1344,10 +1349,12 @@ export default function AdminPluginsPage() {
                 取消
               </button>
               <button
+                type="button"
                 onClick={handleSave}
-                className="px-5 py-2.5 bg-[#cc785c] text-white text-sm rounded-lg hover:bg-[#a9583e] transition-colors"
+                disabled={saving}
+                className="px-5 py-2.5 bg-[#cc785c] text-white text-sm rounded-lg hover:bg-[#a9583e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {editingPlugin ? "保存修改" : "创建插件"}
+                {saving ? "保存中…" : editingPlugin ? "保存修改" : "创建插件"}
               </button>
             </div>
           </div>

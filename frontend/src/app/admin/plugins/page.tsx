@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef, type DragEvent, type ChangeEvent } from "react";
-import type { Plugin, Tag } from "@/lib/types";
+import type { Plugin, Tag, FeaturedCollection } from "@/lib/types";
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from "@/lib/api-client";
 import { createClient } from "@/lib/supabase/client";
 import AdminLayout from "@/components/ui/admin-layout";
@@ -54,6 +54,7 @@ export default function AdminPluginsPage() {
   const [pluginList, setPluginList] = useState<Plugin[]>([]);
   const [allCategories, setAllCategories] = useState<{ id: string; name: string; icon: string }[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [allCollections, setAllCollections] = useState<FeaturedCollection[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingPlugin, setEditingPlugin] = useState<Plugin | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Plugin | null>(null);
@@ -116,10 +117,18 @@ export default function AdminPluginsPage() {
     } catch { /* ignore */ }
   }, []);
 
+  const fetchCollections = useCallback(async () => {
+    try {
+      const data = await apiGet<FeaturedCollection[]>("/api/featured-collections");
+      setAllCollections(data);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     fetchPlugins();
     fetchCategories();
-  }, [fetchPlugins, fetchCategories]);
+    fetchCollections();
+  }, [fetchPlugins, fetchCategories, fetchCollections]);
 
   const categoryColors = useMemo(() => {
     const palette = [
@@ -140,6 +149,17 @@ export default function AdminPluginsPage() {
     });
     return map;
   }, [allCategories]);
+
+  const pluginCollectionsMap = useMemo(() => {
+    const map: Record<string, FeaturedCollection[]> = {};
+    allCollections.forEach((col) => {
+      (col.pluginIds || []).forEach((pid) => {
+        if (!map[pid]) map[pid] = [];
+        map[pid].push(col);
+      });
+    });
+    return map;
+  }, [allCollections]);
 
   const filteredPlugins = useMemo(() => {
     let result = pluginList;

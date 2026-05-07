@@ -1,8 +1,7 @@
 import { createServerSupabase } from "@/lib/supabase/server";
-import { error, jsonResponse } from "@/lib/api-helper";
-import { NextResponse } from "next/server";
+import { success, error, jsonResponse } from "@/lib/api-helper";
 
-export async function GET(
+export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -10,17 +9,17 @@ export async function GET(
     const supabase = await createServerSupabase();
     const { id } = await params;
 
-    const { data, error: err } = await supabase
+    const { data: plugin, error: getErr } = await supabase
       .from("agenthub_plugins")
-      .select("package_file")
+      .select("package_file, downloads")
       .eq("id", id)
       .single();
 
-    if (err || !data) {
+    if (getErr || !plugin) {
       return jsonResponse(error("插件不存在"), 404);
     }
 
-    const packageFile: string = (data as Record<string, unknown>).package_file as string || "";
+    const packageFile: string = (plugin as Record<string, unknown>).package_file as string || "";
 
     if (!packageFile) {
       return jsonResponse(error("该插件无可下载的安装包"), 404);
@@ -30,7 +29,22 @@ export async function GET(
       .from("agenthub")
       .getPublicUrl(packageFile);
 
-    return NextResponse.redirect(publicUrlData.publicUrl);
+    const currentDownloads: number = (plugin as Record<string, unknown>).downloads as number || 0;
+    const newDownloads = currentDownloads + 1;
+
+    const { error: updateErr } = await supabase
+      .from("agenthub_plugins")
+      .update({ downloads: newDownloads })
+      .eq("id", id);
+
+    if (updateErr) {
+      console.error("下载计数更新失败:", updateErr.message);
+    }
+
+    return jsonResponse(success({
+      downloadUrl: publicUrlData.publicUrl,
+      newCount: newDownloads,
+    }));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }

@@ -1,5 +1,5 @@
 import { createServerSupabase } from "@/lib/supabase/server";
-import { success, error, jsonResponse } from "@/lib/api-helper";
+import { success, error, jsonResponse, toCamelCase } from "@/lib/api-helper";
 
 export async function GET(
   _request: Request,
@@ -16,7 +16,7 @@ export async function GET(
       .single();
 
     if (err || !data) return jsonResponse(error("用户不存在"), 404);
-    return jsonResponse(success(data));
+    return jsonResponse(success(toCamelCase(data as Record<string, unknown>)));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }
@@ -56,7 +56,7 @@ export async function PUT(
       .single();
 
     if (err) return jsonResponse(error(err.message), 500);
-    return jsonResponse(success(data));
+    return jsonResponse(success(toCamelCase(data as Record<string, unknown>)));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);
   }

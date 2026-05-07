@@ -105,7 +105,7 @@ export default function MarketplacePage() {
   }, [allCategories]);
 
   const publishedPlugins = useMemo(
-    () => allPlugins,
+    () => allPlugins.filter((p) => p.status === "published"),
     [allPlugins]
   );
 
@@ -118,8 +118,8 @@ export default function MarketplacePage() {
   const collectionPlugins = useMemo(() => {
     return allCollections.map((col) => ({
       ...col,
-      plugins: col.pluginIds
-        .map((id) => publishedPlugins.find((p) => p.id === id))
+      plugins: (col.pluginIds || [])
+        .map((id: string) => publishedPlugins.find((p) => p.id === id))
         .filter(Boolean) as Plugin[],
     }));
   }, [publishedPlugins, allCollections]);

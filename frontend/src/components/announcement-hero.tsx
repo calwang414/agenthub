@@ -33,7 +33,9 @@ export default function AnnouncementHero({ announcements, onDismiss }: Props) {
 
   if (len === 0) return null;
 
-  const item = announcements[current];
+  const safeIndex = current % len;
+  const item = announcements[safeIndex];
+  if (!item) return null;
 
   return (
     <div className="bg-[#f5f0e8] rounded-xl border border-[#e6dfd8] relative h-full">

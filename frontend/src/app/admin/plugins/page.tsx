@@ -654,7 +654,6 @@ export default function AdminPluginsPage() {
           }
         }
       }
-      fetchPlugins();
     } catch (e) {
       addToast(`保存失败: ${String(e)}`, "error");
     } finally {
@@ -663,6 +662,7 @@ export default function AdminPluginsPage() {
       setShowModal(false);
       setEditingPlugin(null);
     }
+    fetchPlugins();
   };
 
   useEffect(() => {

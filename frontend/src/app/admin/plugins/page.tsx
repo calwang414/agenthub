@@ -630,7 +630,22 @@ export default function AdminPluginsPage() {
           author: formData.author.trim(),
           category: formData.category,
           tags,
+          readme: formData.readme,
+          changelog: formData.changelog.trim(),
         };
+
+        if (formData.version.trim() !== editingPlugin.version) {
+          const oldEntry = {
+            version: editingPlugin.version,
+            date: new Date().toISOString(),
+            changelog: editingPlugin.changelog ? [editingPlugin.changelog] : [],
+          };
+          const existingHistory = editingPlugin.versionHistory || [];
+          updatePayload.versionHistory = [oldEntry, ...existingHistory];
+        } else {
+          updatePayload.reviews = editingPlugin.reviews;
+          updatePayload.versionHistory = editingPlugin.versionHistory;
+        }
 
         const storageToDelete: string[] = [];
 
@@ -690,6 +705,8 @@ export default function AdminPluginsPage() {
           formDataUpload.append("category", formData.category);
           formDataUpload.append("status", "draft");
           tags.forEach((tag, i) => formDataUpload.append(`tags[${i}]`, tag));
+          formDataUpload.append("readme", formData.readme);
+          formDataUpload.append("changelog", formData.changelog.trim());
           if (packageFile) {
             formDataUpload.append("package", packageFile);
           }
@@ -715,6 +732,8 @@ export default function AdminPluginsPage() {
             category: formData.category,
             tags,
             status: "draft",
+            readme: formData.readme,
+            changelog: formData.changelog.trim(),
           });
           addToast(`插件「${formData.name.trim()}」已创建`, "success");
           const iconPath = await uploadPluginIcon(newPlugin.id);

@@ -511,16 +511,19 @@ export default function AdminPluginsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ paths }),
       });
+      if (!res.ok) {
+        console.error("Storage 删除 API 返回错误:", res.status);
+        return;
+      }
       const json = await res.json();
       if (json.success && json.data) {
-        const { deleted, failed } = json.data as { deleted: number; failed: number };
+        const { failed } = json.data as { deleted: number; failed: number };
         if (failed > 0) {
           addToast(`${failed} 个文件删除失败`, "error");
         }
       }
     } catch (e) {
       console.error("Storage 删除请求失败:", e);
-      addToast("Storage 文件清理失败", "error");
     }
   }
 
@@ -551,9 +554,11 @@ export default function AdminPluginsPage() {
 
         if (packageFile) {
           const pkgPath = await uploadPackageToStorage(editingPlugin.id);
-          if (pkgPath) updatePayload.packageFile = pkgPath;
-          if (existingPackagePath) {
-            storageToDelete.push(existingPackagePath);
+          if (pkgPath) {
+            updatePayload.packageFile = pkgPath;
+            if (existingPackagePath) {
+              storageToDelete.push(existingPackagePath);
+            }
           }
         } else if (existingPackageRemoved && existingPackagePath) {
           updatePayload.packageFile = "";
@@ -580,7 +585,7 @@ export default function AdminPluginsPage() {
         }
 
         if (storageToDelete.length > 0) {
-          await deleteStorageFiles(storageToDelete);
+          deleteStorageFiles(storageToDelete);
         }
 
         await apiPut(`/api/plugins/${editingPlugin.id}`, updatePayload);

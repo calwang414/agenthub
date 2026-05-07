@@ -1,4 +1,5 @@
 import { createServerSupabase } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { success, error, jsonResponse, toCamelCase } from "@/lib/api-helper";
 
 export async function GET(
@@ -70,12 +71,28 @@ export async function DELETE(
     const supabase = await createServerSupabase();
     const { id } = await params;
 
-    const { error: err } = await supabase
+    const { data: userRow, error: getErr } = await supabase
+      .from("agenthub_users")
+      .select("id")
+      .eq("id", id)
+      .single();
+
+    if (getErr || !userRow) return jsonResponse(error("用户不存在"), 404);
+
+    const { error: deleteProfileErr } = await supabase
       .from("agenthub_users")
       .delete()
       .eq("id", id);
 
-    if (err) return jsonResponse(error(err.message), 500);
+    if (deleteProfileErr) return jsonResponse(error(deleteProfileErr.message), 500);
+
+    const adminClient = createAdminClient();
+    const { error: deleteAuthErr } = await adminClient.auth.admin.deleteUser(id);
+
+    if (deleteAuthErr) {
+      console.error("删除 auth.users 失败:", deleteAuthErr.message);
+    }
+
     return jsonResponse(success({ deleted: true }));
   } catch (e) {
     return jsonResponse(error(String(e)), 500);

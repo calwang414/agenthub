@@ -130,11 +130,13 @@ export default function AnnouncementHero({ announcements, onDismiss }: Props) {
           </div>
 
           {item.linkUrl && (
-            <div className="mt-4 pt-4 border-t border-[#e6dfd8]">
-              <span className="text-[#cc785c] text-sm" style={{ fontFamily: "Inter, sans-serif", fontWeight: 500 }}>
-                查看详情 →
-              </span>
-            </div>
+            <Link
+              href={item.linkUrl}
+              className="mt-4 pt-4 border-t border-[#e6dfd8] block text-[#cc785c] text-sm hover:text-[#a9583e] transition-colors"
+              style={{ fontFamily: "Inter, sans-serif", fontWeight: 500 }}
+            >
+              查看详情 →
+            </Link>
           )}
         </div>
 

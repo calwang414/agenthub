@@ -559,12 +559,12 @@ console.log("✓ ${plugin.name} is ready.");`}</code>
       {/* Version History Drawer */}
       {versionDrawerOpen && plugin?.versionHistory && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center"
           onClick={() => setVersionDrawerOpen(false)}
         >
           <div className="absolute inset-0 bg-[#141413]/30 backdrop-blur-sm" />
           <div
-            className="relative bg-[#faf9f5] rounded-t-2xl w-full max-w-[720px] max-h-[70vh] overflow-y-auto shadow-2xl animate-slide-up-drawer"
+            className="relative bg-[#faf9f5] rounded-2xl w-full max-w-[720px] max-h-[70vh] overflow-y-auto shadow-2xl mx-4 animate-slide-up-drawer"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-[#faf9f5] border-b border-[#e6dfd8] px-6 py-4 flex items-center justify-between rounded-t-2xl">
@@ -643,8 +643,8 @@ console.log("✓ ${plugin.name} is ready.");`}</code>
         }
         .animate-slide-up { animation: slide-up 0.3s ease-out; }
         @keyframes slide-up-drawer {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
+          from { opacity: 0; transform: translateY(40px) scale(0.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .animate-slide-up-drawer { animation: slide-up-drawer 0.3s ease-out; }
       `}</style>

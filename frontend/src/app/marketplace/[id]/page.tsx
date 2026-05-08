@@ -104,10 +104,10 @@ export default function PluginDetailPage() {
         icon: CATEGORY_ICONS[plugin.category] || "📦",
       });
       window.open(result.downloadUrl, "_blank");
-      addToast(`「${plugin.name}」安装成功！已加入下载列表`);
+      addToast(`「${plugin.name}」下载成功！已加入下载列表`);
       setInstalling(false);
     } catch {
-      addToast(`「${plugin.name}」安装失败，请稍后重试`);
+      addToast(`「${plugin.name}」下载失败，请稍后重试`);
       setInstalling(false);
     }
   }, [installing, plugin, addToast, addDownload]);
@@ -304,7 +304,7 @@ console.log("✓ ${plugin.name} is ready.");`}</code>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    {installing ? "安装中…" : "安装插件"}
+                    {installing ? "下载中…" : "下载插件"}
                   </button>
                   <button
                     onClick={() => {
@@ -543,7 +543,7 @@ console.log("✓ ${plugin.name} is ready.");`}</code>
             准备开始使用 {plugin.name}？
           </h2>
           <p className="text-white/80 mb-8" style={{ fontFamily: "Inter, sans-serif", fontSize: "16px" }}>
-            一键安装到你的智能体中，立即体验强大功能
+            一键下载到你的智能体中，立即体验强大功能
           </p>
           <button
             onClick={handleInstall}
@@ -551,7 +551,7 @@ console.log("✓ ${plugin.name} is ready.");`}</code>
             className="inline-block px-8 py-3 bg-white text-[#cc785c] rounded-lg font-medium hover:bg-[#faf9f5] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ fontFamily: "Inter, sans-serif", fontSize: "14px" }}
           >
-            {installing ? "安装中…" : "立即安装"}
+            {installing ? "下载中…" : "立即下载"}
           </button>
         </div>
       </section>
